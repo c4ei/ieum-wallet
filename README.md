@@ -28,7 +28,7 @@ https://github.com/c4ei/ieum-wallet
 - USDT 입금 확인 → IEUM 견적·교환 → 현재 IEUM 지갑 출금의 3단계 간편 교환
 - 재단 서비스 수수료·출금 비용·최소 수령액을 분리한 견적 표시
 - 허용된 `cex.aah.name` 간편교환 API만 호출하는 Tauri 프록시
-- `ieum-chain v0.21.0` 기반 peer 간 1:1 종단간 암호화 채팅과 운영 상태 검증
+- 최신 정식 `ieum-chain` 기반 peer 간 1:1 종단간 암호화 채팅과 운영 상태 검증
 - 방장 1명, 부방장 여러 명, 청중 여러 명으로 구성되는 1:n 채팅방
 - AES-256-GCM 메시지 암호화와 90초 전달 유효시간
 - 채팅 내용의 블록·원장·서버 DB 미저장
@@ -47,7 +47,7 @@ npm install
 npm run tauri dev
 ```
 
-채팅과 송금을 사용하려면 `ieum-chain v0.21.0` 노드를 P2P와 localhost JSON-RPC 포트로 실행해야 합니다.
+채팅과 송금을 사용하려면 호환되는 최신 정식 `ieum-chain` 노드를 P2P와 localhost JSON-RPC 포트로 실행해야 합니다. Normal 릴리스는 6시간마다 최신 Core 릴리스를 확인해 자동으로 다시 빌드됩니다.
 
 ```bash
 cargo run -- --port 7001 --rpc-port 8545

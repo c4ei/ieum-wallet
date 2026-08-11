@@ -74,9 +74,12 @@ Repository Settings의 Actions secrets/variables에 다음 값을 등록합니�
 Actions에서 `Build and release IEUM Wallet Light and Normal`을 실행하고 다음 값을 입력합니다.
 
 - `version`: `0.0.10.1`
-- `core_ref`: Normal에 포함할 `ieum-chain` 태그 또는 커밋
+- `core_ref`: Normal에 포함할 `ieum-chain` 태그 또는 커밋. `latest`이면 최신 정식 릴리스 태그를 자동 조회합니다.
+- `normal_only`: Normal 데스크톱만 다시 빌드할 때 사용합니다. 일반 수동 릴리스는 `false`로 둡니다.
 
 워크플로는 버전 일치, updater 키, 웹 빌드와 테스트를 먼저 검사한 뒤 Windows/Ubuntu Light·Normal 및 Android Light를 빌드합니다.
+
+`Sync latest IEUM Chain into Normal wallet` 워크플로는 6시간마다 `ieum-chain`의 최신 GitHub 릴리스를 확인합니다. 공개된 Normal 월렛의 릴리스 설명에 해당 Core 태그가 없으면 `normal_only=true`로 서명 빌드를 자동 실행합니다. Normal 릴리스 설명의 `IEUM Chain: vX.Y.Z` 항목으로 실제 포함 버전을 확인할 수 있습니다.
 
 ## 설치
 

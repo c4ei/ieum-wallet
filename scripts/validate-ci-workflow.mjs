@@ -11,7 +11,9 @@ const required = new Map([
   ["rm -rf src-tauri/gen/android", "식별자 변경 전 Android 생성물을 제거해야 합니다."],
   ["npm run android:init:light", "Light 식별자로 Android 프로젝트를 다시 생성해야 합니다."],
   ["test -n \"${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}\"", "릴리스 전에 Tauri 서명 키를 검사해야 합니다."],
-  ["ref: ${{ inputs.core_ref }}", "Normal 빌드는 입력으로 받은 유효한 Core ref를 checkout해야 합니다."],
+  ["gh api repos/c4ei/ieum-chain/releases/latest", "latest 입력은 최신 IEUM Core 릴리스 태그로 해석해야 합니다."],
+  ["ref: ${{ steps.resolve-core.outputs.core_ref }}", "Normal 빌드는 해석 및 검증한 Core ref를 checkout해야 합니다."],
+  ["IEUM Chain: ${{ matrix.edition == 'normal' && steps.resolve-core.outputs.core_ref || 'remote RPC' }}", "Normal 릴리스에는 포함된 Core 버전을 기록해야 합니다."],
 ]);
 
 for (const [pattern, message] of required) {

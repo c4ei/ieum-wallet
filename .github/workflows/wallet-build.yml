@@ -9,10 +9,15 @@ on:
         default: 0.0.10.8
         type: string
       core_ref:
-        description: ieum-chain tag, branch or commit for Normal
+        description: ieum-chain tag, branch, commit or latest for Normal
         required: true
-        default: v0.21.9
+        default: latest
         type: string
+      normal_only:
+        description: Build only Normal desktop editions (used by automatic Core sync)
+        required: true
+        default: false
+        type: boolean
       android_release:
         description: Build a signed Android release AAB (requires Android signing secrets)
         required: true
@@ -21,6 +26,10 @@ on:
 
 permissions:
   contents: write
+
+concurrency:
+  group: wallet-release
+  cancel-in-progress: false
 
 env:
   DISPLAY_VERSION: 0.0.10.8
@@ -49,20 +58,33 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { edition: light, label: Light, platform: Windows, os: windows-latest, bundles: "nsis,msi", features: "" }
-          - { edition: light, label: Light, platform: Ubuntu, os: ubuntu-22.04, bundles: "appimage,deb", features: "" }
-          - { edition: normal, label: Normal, platform: Windows, os: windows-latest, bundles: "nsis,msi", features: "--features embedded-core" }
-          - { edition: normal, label: Normal, platform: Ubuntu, os: ubuntu-22.04, bundles: "appimage,deb", features: "--features embedded-core" }
+        include: ${{ fromJSON(inputs.normal_only && '[{"edition":"normal","label":"Normal","platform":"Windows","os":"windows-latest","bundles":"nsis,msi","features":"--features embedded-core"},{"edition":"normal","label":"Normal","platform":"Ubuntu","os":"ubuntu-22.04","bundles":"appimage,deb","features":"--features embedded-core"}]' || '[{"edition":"light","label":"Light","platform":"Windows","os":"windows-latest","bundles":"nsis,msi","features":""},{"edition":"light","label":"Light","platform":"Ubuntu","os":"ubuntu-22.04","bundles":"appimage,deb","features":""},{"edition":"normal","label":"Normal","platform":"Windows","os":"windows-latest","bundles":"nsis,msi","features":"--features embedded-core"},{"edition":"normal","label":"Normal","platform":"Ubuntu","os":"ubuntu-22.04","bundles":"appimage,deb","features":"--features embedded-core"}]') }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
+      - name: Resolve IEUM Core ref
+        id: resolve-core
+        if: matrix.edition == 'normal'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_CORE_REF: ${{ inputs.core_ref }}
+        run: |
+          requested="${REQUESTED_CORE_REF:-latest}"
+          if [ "$requested" = "latest" ]; then
+            core_ref="$(gh api repos/c4ei/ieum-chain/releases/latest --jq .tag_name)"
+          else
+            core_ref="$requested"
+          fi
+          test -n "$core_ref"
+          echo "Using IEUM Core $core_ref"
+          echo "core_ref=$core_ref" >> "$GITHUB_OUTPUT"
       - name: Checkout IEUM Core
         if: matrix.edition == 'normal'
         uses: actions/checkout@v5
         with:
           repository: c4ei/ieum-chain
-          ref: ${{ inputs.core_ref }}
+          ref: ${{ steps.resolve-core.outputs.core_ref }}
           path: ieum-chain-source
       - name: Install Ubuntu dependencies
         if: runner.os == 'Linux'
@@ -78,12 +100,18 @@ jobs:
           $sqliteLib = "C:\vcpkg\installed\x64-windows-static-md\lib"
           "LIB=$sqliteLib;$env:LIB" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "RUSTFLAGS=-L native=$sqliteLib" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-      - name: Verify Windows Normal core source version
-        if: runner.os == 'Windows' && matrix.edition == 'normal'
-        shell: pwsh
+      - name: Verify Normal core source version
+        if: matrix.edition == 'normal'
+        shell: bash
+        env:
+          CORE_REF: ${{ steps.resolve-core.outputs.core_ref }}
         run: |
-          $version = (cargo metadata --no-deps --format-version 1 --manifest-path ieum-chain-source/Cargo.toml | ConvertFrom-Json).packages[0].version
-          if ($version -ne "0.21.9") { throw "Normal core must be IEUM Chain 0.21.9 (actual: $version)" }
+          version="$(cargo metadata --no-deps --format-version 1 --manifest-path ieum-chain-source/Cargo.toml | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).packages[0].version))')"
+          if [[ "$CORE_REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] && [ "$version" != "${CORE_REF#v}" ]; then
+            echo "Normal core tag $CORE_REF does not match Cargo version $version" >&2
+            exit 1
+          fi
+          echo "Verified IEUM Core $CORE_REF (Cargo $version)"
       - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - uses: dtolnay/rust-toolchain@stable
@@ -116,7 +144,9 @@ jobs:
         with:
           tagName: wallet-${{ matrix.edition }}-latest
           releaseName: IEUM Wallet ${{ matrix.label }} v${{ inputs.version }}
-          releaseBody: Signed IEUM Wallet ${{ matrix.label }} v${{ inputs.version }} release.
+          releaseBody: |
+            Signed IEUM Wallet ${{ matrix.label }} v${{ inputs.version }} release.
+            IEUM Chain: ${{ matrix.edition == 'normal' && steps.resolve-core.outputs.core_ref || 'remote RPC' }}
           releaseDraft: false
           prerelease: false
           uploadUpdaterJson: true
@@ -128,6 +158,7 @@ jobs:
           args: --config src-tauri/tauri.${{ matrix.edition }}.conf.json ${{ matrix.features }} --bundles ${{ matrix.bundles }}
 
   android-light:
+    if: ${{ !inputs.normal_only }}
     needs: validate
     runs-on: ubuntu-22.04
     steps:
@@ -159,7 +190,7 @@ jobs:
 
   android-release:
     name: Android Light / signed release AAB
-    if: ${{ inputs.android_release }}
+    if: ${{ inputs.android_release && !inputs.normal_only }}
     needs: validate
     runs-on: ubuntu-22.04
     steps:
@@ -208,6 +239,7 @@ jobs:
 
   migration-default:
     name: Keep 0.0.9.3 users on Light
+    if: ${{ !inputs.normal_only }}
     needs: desktop
     runs-on: ubuntu-22.04
     steps:
