@@ -6,12 +6,12 @@ on:
       version:
         description: Release version
         required: true
-        default: 0.0.10.6
+        default: 0.0.10.7
         type: string
       core_ref:
         description: ieum-chain tag, branch or commit for Normal
         required: true
-        default: v0.21.7
+        default: v0.21.8
         type: string
       android_release:
         description: Build a signed Android release AAB (requires Android signing secrets)
@@ -23,20 +23,21 @@ permissions:
   contents: write
 
 env:
-  DISPLAY_VERSION: 0.0.10.6
+  DISPLAY_VERSION: 0.0.10.7
 
 jobs:
   validate:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - name: Validate source versions and signing secret
         shell: bash
         run: |
           test "${{ inputs.version }}" = "$DISPLAY_VERSION"
           npm run validate:release
+          npm run validate:ci
           test -n "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
       - run: npm ci
       - run: npm run build
@@ -55,10 +56,10 @@ jobs:
           - { edition: normal, label: Normal, platform: Ubuntu, os: ubuntu-22.04, bundles: "appimage,deb", features: "--features embedded-core" }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Checkout IEUM Core
         if: matrix.edition == 'normal'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: c4ei/ieum-chain
           ref: ${{ inputs.core_ref }}
@@ -82,8 +83,8 @@ jobs:
         shell: pwsh
         run: |
           $version = (cargo metadata --no-deps --format-version 1 --manifest-path ieum-chain-source/Cargo.toml | ConvertFrom-Json).packages[0].version
-          if ($version -ne "0.21.7") { throw "Normal core must be IEUM Chain 0.21.7 (actual: $version)" }
-      - uses: actions/setup-node@v4
+          if ($version -ne "0.21.8") { throw "Normal core must be IEUM Chain 0.21.8 (actual: $version)" }
+      - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - uses: dtolnay/rust-toolchain@stable
       - uses: swatinem/rust-cache@v2
@@ -130,8 +131,8 @@ jobs:
     needs: validate
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - uses: dtolnay/rust-toolchain@stable
         with: { targets: aarch64-linux-android }
@@ -162,8 +163,8 @@ jobs:
     needs: validate
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - uses: dtolnay/rust-toolchain@stable
         with: { targets: aarch64-linux-android }
