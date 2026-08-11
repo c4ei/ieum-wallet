@@ -1,0 +1,29 @@
+0_기존 v0.0.10.8 태그 삭제_다시_생성
+
+cd /www/ieum-wallet
+
+# 현재 커밋 확인
+git log -1 --oneline
+
+# 기존 태그 삭제
+git tag -d v0.0.10.8
+git push origin --delete v0.0.10.8
+
+# 현재 HEAD에 태그 재생성 및 푸시
+git tag -a v0.0.10.8 -m "IEUM Wallet v0.0.10.8"
+git push origin v0.0.10.8
+
+
+
+확인:
+
+git show --no-patch v0.0.10.8
+git ls-remote --tags origin | grep 'v0.0.10.8'
+
+GitHub Release가 기존 태그에 연결되어 있었다면 Release도 다시 확인해야 합니다. 또한 다른 서버가 이미 기존 v0.0.10.8을 받아갔다면 태그 캐시가 남을 수 있으므로 그 서버에서는 다음처럼 갱신합니다.
+
+git fetch origin --prune --prune-tags --force
+
+화면의 저장소 이전 안내는 정상입니다. 가능하면 원격 주소도 신규 주소로 변경해 두세요.
+
+git remote set-url origin https://github.com/c4ei/ieum-wallet.git
