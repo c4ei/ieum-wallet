@@ -11,7 +11,7 @@ on:
       core_ref:
         description: ieum-chain tag, branch or commit for Normal
         required: true
-        default: v0.21.8
+        default: v0.21.9
         type: string
       android_release:
         description: Build a signed Android release AAB (requires Android signing secrets)
@@ -83,7 +83,7 @@ jobs:
         shell: pwsh
         run: |
           $version = (cargo metadata --no-deps --format-version 1 --manifest-path ieum-chain-source/Cargo.toml | ConvertFrom-Json).packages[0].version
-          if ($version -ne "0.21.8") { throw "Normal core must be IEUM Chain 0.21.8 (actual: $version)" }
+          if ($version -ne "0.21.9") { throw "Normal core must be IEUM Chain 0.21.9 (actual: $version)" }
       - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - uses: dtolnay/rust-toolchain@stable
