@@ -24,8 +24,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          core_ref="$(gh api repos/c4ei/ieum-chain/releases/latest --jq .tag_name)"
-          test -n "$core_ref"
+          core_ref="$(
+            git ls-remote --tags --refs https://github.com/c4ei/ieum-chain.git 'refs/tags/v*' \
+              | sed -n 's#.*refs/tags/\(v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)$#\1#p' \
+              | sort -V \
+              | tail -n 1
+          )"
+          if [ -z "$core_ref" ]; then
+            echo "No stable IEUM Chain tag matching vMAJOR.MINOR.PATCH was found" >&2
+            exit 1
+          fi
 
           release_body="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/wallet-normal-latest" --jq .body 2>/dev/null || true)"
           if grep -Fqx "IEUM Chain: $core_ref" <<< "$release_body"; then

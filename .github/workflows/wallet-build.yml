@@ -72,11 +72,19 @@ jobs:
         run: |
           requested="${REQUESTED_CORE_REF:-latest}"
           if [ "$requested" = "latest" ]; then
-            core_ref="$(gh api repos/c4ei/ieum-chain/releases/latest --jq .tag_name)"
+            core_ref="$(
+              git ls-remote --tags --refs https://github.com/c4ei/ieum-chain.git 'refs/tags/v*' \
+                | sed -n 's#.*refs/tags/\(v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)$#\1#p' \
+                | sort -V \
+                | tail -n 1
+            )"
           else
             core_ref="$requested"
           fi
-          test -n "$core_ref"
+          if [ -z "$core_ref" ]; then
+            echo "No stable IEUM Chain tag matching vMAJOR.MINOR.PATCH was found" >&2
+            exit 1
+          fi
           echo "Using IEUM Core $core_ref"
           echo "core_ref=$core_ref" >> "$GITHUB_OUTPUT"
       - name: Checkout IEUM Core
