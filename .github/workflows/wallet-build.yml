@@ -6,7 +6,7 @@ on:
       version:
         description: Release version
         required: true
-        default: 0.0.10.8
+        default: 0.0.10.9
         type: string
       core_ref:
         description: ieum-chain tag, branch, commit or latest for Normal
@@ -32,7 +32,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DISPLAY_VERSION: 0.0.10.8
+  DISPLAY_VERSION: 0.0.10.9
 
 jobs:
   validate:
