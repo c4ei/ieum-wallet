@@ -405,6 +405,13 @@ fn open_aah_site(app: AppHandle) -> Result<(), String> {
     }
 }
 
+#[tauri::command]
+fn open_ieum_explorer(app: AppHandle) -> Result<(), String> {
+    app.opener()
+        .open_url("https://iem.aah.name", None::<&str>)
+        .map_err(|error| format!("IEUM 익스플로러 열기 실패: {error}"))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default().plugin(tauri_plugin_opener::init());
@@ -440,7 +447,8 @@ pub fn run() {
             write_call_audit,
             read_call_audit,
             clear_call_audit,
-            open_aah_site
+            open_aah_site,
+            open_ieum_explorer
         ]);
 
     #[cfg(feature = "embedded-core")]

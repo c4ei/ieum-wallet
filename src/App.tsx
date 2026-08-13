@@ -458,17 +458,29 @@ export default function App() {
     if (!vault) return;
     try {
       setBusy(true);
-      const chain = await rpcCall<string>(rpcUrl, "eth_chainId", []);
-      if (Number(parseHexQuantity(chain)) !== CHAIN_ID) {
-        throw new Error(`IEUM Chain ID(${CHAIN_ID})가 아닌 노드입니다.`);
+      const fallbackRpcUrls=(import.meta.env.VITE_FALLBACK_RPC_URLS || "https://irpc.aah.name").split(",").map((value:string)=>value.trim()).filter(Boolean);
+      const candidates=[...new Set([rpcUrl,...fallbackRpcUrls])];
+      let activeRpcUrl="";
+      let selectedIdentity: { chainId: number; genesisHash: string; protocolVersion: string } | null=null;
+      const failures:string[]=[];
+      for (const candidate of candidates) {
+        try {
+          const [chainId,nodeIdentity]=await Promise.all([
+            rpcCall<string>(candidate,"eth_chainId",[]),
+            rpcCall<{ chainId: number; genesisHash: string; protocolVersion: string }>(candidate,"ieum_networkIdentity",[])
+          ]);
+          if (Number(parseHexQuantity(chainId)) !== CHAIN_ID || nodeIdentity.chainId !== CHAIN_ID || nodeIdentity.genesisHash.toLowerCase() !== EXPECTED_GENESIS_HASH) throw new Error("운영망 신원 불일치");
+          activeRpcUrl=candidate; selectedIdentity=nodeIdentity; break;
+        } catch (error) { failures.push(`${candidate}: ${String(error)}`); }
       }
+      if (!activeRpcUrl || !selectedIdentity) throw new Error(`호환되는 IEUM RPC가 없습니다. ${failures.join(" / ")}`);
       const [identity, protocol, node, sync, finalized, recovery] = await Promise.all([
-        rpcCall<{ chainId: number; genesisHash: string; protocolVersion: string }>(rpcUrl, "ieum_networkIdentity", []),
-        rpcCall<{ nodeVersion: string; protocolVersion: string; minimumCompatibleProtocolVersion: string }>(rpcUrl, "ieum_protocolVersion", []),
-        rpcCall<{ peers: number }>(rpcUrl, "ieum_nodeStatus", []),
-        rpcCall<{ progressPercent: number; readyForTransactions: boolean }>(rpcUrl, "ieum_syncStatus", []),
-        rpcCall<{ height: number }>(rpcUrl, "ieum_finalizedBlock", []),
-        rpcCall<{ active: boolean }>(rpcUrl, "ieum_recoveryStatus", [])
+        Promise.resolve(selectedIdentity),
+        rpcCall<{ nodeVersion: string; protocolVersion: string; minimumCompatibleProtocolVersion: string }>(activeRpcUrl, "ieum_protocolVersion", []),
+        rpcCall<{ peers: number }>(activeRpcUrl, "ieum_nodeStatus", []),
+        rpcCall<{ progressPercent: number; readyForTransactions: boolean }>(activeRpcUrl, "ieum_syncStatus", []),
+        rpcCall<{ height: number }>(activeRpcUrl, "ieum_finalizedBlock", []),
+        rpcCall<{ active: boolean }>(activeRpcUrl, "ieum_recoveryStatus", [])
       ]);
       if (identity.chainId !== CHAIN_ID || identity.genesisHash.toLowerCase() !== EXPECTED_GENESIS_HASH) {
         throw new Error("IEUM 운영망 제네시스와 일치하지 않는 노드입니다.");
@@ -482,7 +494,7 @@ export default function App() {
       if (!sync.readyForTransactions) {
         throw new Error(`노드 동기화 중입니다 (${sync.progressPercent.toFixed(1)}%). 송금은 동기화 후 가능합니다.`);
       }
-      const value = await rpcCall<string>(rpcUrl, "eth_getBalance", [vault.address, "latest"]);
+      const value = await rpcCall<string>(activeRpcUrl, "eth_getBalance", [vault.address, "latest"]);
       setBalance(parseHexQuantity(value));
       setNetworkStatus({
         nodeVersion: protocol.nodeVersion,
@@ -494,7 +506,8 @@ export default function App() {
         readyForTransactions: sync.readyForTransactions
       });
       setNetworkOk(true);
-      localStorage.setItem("aah-rpc-url", rpcUrl);
+      setRpcUrl(activeRpcUrl);
+      localStorage.setItem("aah-rpc-url", activeRpcUrl);
       setMessage("잔액을 새로 확인했습니다.");
     } catch (error) {
       setNetworkOk(false);
@@ -584,6 +597,13 @@ export default function App() {
     } catch (error) {
       setMessage(String(error));
     }
+  }
+
+  async function openExplorer() {
+    try {
+      await invoke("open_ieum_explorer");
+      setMessage("IEUM 읽기 전용 블록 익스플로러를 열었습니다.");
+    } catch (error) { setMessage(String(error)); }
   }
 
   async function beginUsdtDeposit() {
@@ -952,6 +972,7 @@ export default function App() {
           {showNetworkSettings && <div className="network-details">
             <label>IEUM 노드 RPC<input value={rpcUrl} onChange={(e) => setRpcUrl(e.target.value)} /></label>
             <button className="secondary" onClick={refresh}>연결 다시 확인</button>
+            <button className="secondary" onClick={openExplorer}>읽기 전용 익스플로러</button>
             <dl><dt>에디션</dt><dd>{walletEdition === "normal" ? "Normal (내장 Core)" : "Light (원격 RPC)"}</dd><dt>Chain ID</dt><dd>{CHAIN_ID}</dd><dt>기본 RPC</dt><dd>{defaultRpcUrl.replace(/^https?:\/\//, "")}</dd></dl>
           </div>}
         </section>

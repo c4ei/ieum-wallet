@@ -3,6 +3,9 @@ import { readFile, writeFile } from "node:fs/promises";
 const bundledPublicKeyPath = new URL("../src-tauri/updater-public.key", import.meta.url);
 const publicKey = process.env.TAURI_UPDATER_PUBLIC_KEY?.trim()
   || (await readFile(bundledPublicKeyPath, "utf8")).trim();
+if (!publicKey || publicKey === "__IEUM_UPDATER_PUBLIC_KEY__" || !publicKey.startsWith("dW50cnVzdGVkIGNvbW1lbnQ6")) {
+  throw new Error("A valid minisign updater public key is required");
+}
 
 const configPath = new URL("../src-tauri/tauri.conf.json", import.meta.url);
 const config = JSON.parse(await readFile(configPath, "utf8"));
