@@ -462,15 +462,19 @@ export default function App() {
       const candidates=[...new Set([rpcUrl,...fallbackRpcUrls])];
       let activeRpcUrl="";
       let selectedIdentity: { chainId: number; genesisHash: string; protocolVersion: string } | null=null;
+      let selectedHeight=-1;
       const failures:string[]=[];
       for (const candidate of candidates) {
         try {
-          const [chainId,nodeIdentity]=await Promise.all([
+          const [chainId,nodeIdentity,finalizedTip]=await Promise.all([
             rpcCall<string>(candidate,"eth_chainId",[]),
-            rpcCall<{ chainId: number; genesisHash: string; protocolVersion: string }>(candidate,"ieum_networkIdentity",[])
+            rpcCall<{ chainId: number; genesisHash: string; protocolVersion: string }>(candidate,"ieum_networkIdentity",[]),
+            rpcCall<{ height: number }>(candidate,"ieum_finalizedBlock",[])
           ]);
           if (Number(parseHexQuantity(chainId)) !== CHAIN_ID || nodeIdentity.chainId !== CHAIN_ID || nodeIdentity.genesisHash.toLowerCase() !== EXPECTED_GENESIS_HASH) throw new Error("운영망 신원 불일치");
-          activeRpcUrl=candidate; selectedIdentity=nodeIdentity; break;
+          if (finalizedTip.height > selectedHeight) {
+            activeRpcUrl=candidate; selectedIdentity=nodeIdentity; selectedHeight=finalizedTip.height;
+          }
         } catch (error) { failures.push(`${candidate}: ${String(error)}`); }
       }
       if (!activeRpcUrl || !selectedIdentity) throw new Error(`호환되는 IEUM RPC가 없습니다. ${failures.join(" / ")}`);
@@ -561,7 +565,7 @@ export default function App() {
       setTransferPageNumber(1);
       setAmount("");
       setTo("");
-      setMessage("전송 요청이 처리되었습니다.");
+      setMessage("거래가 노드에 전파되었습니다. 블록 확정 후 잔액에 반영됩니다.");
       await refresh();
     } catch (error) {
       setMessage(String(error));

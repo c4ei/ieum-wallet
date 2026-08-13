@@ -6,7 +6,7 @@ on:
       version:
         description: Release version
         required: true
-        default: 0.0.10.11
+        default: 0.0.10.12
         type: string
       core_ref:
         description: ieum-chain tag, branch, commit or latest for Normal
@@ -32,7 +32,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DISPLAY_VERSION: 0.0.10.11
+  DISPLAY_VERSION: 0.0.10.12
 
 jobs:
   validate:
@@ -162,7 +162,7 @@ jobs:
           uploadUpdaterSignatures: true
           uploadWorkflowArtifacts: true
           workflowArtifactNamePattern: IEUM-Wallet-${{ matrix.label }}-v${{ inputs.version }}-[platform]-[arch]-[bundle]
-          releaseAssetNamePattern: IEUM-Wallet-${{ matrix.label }}-v${{ inputs.version }}-[platform]-[arch]-[bundle][setup].[ext]
+          releaseAssetNamePattern: IEUM-Wallet-${{ matrix.label }}-v${{ inputs.version }}-[platform]-[arch][setup].[ext]
           args: --config src-tauri/tauri.${{ matrix.edition }}.conf.json ${{ matrix.features }} --bundles ${{ matrix.bundles }}
 
   android-light:

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   CHAIN_ID,
   EXPECTED_GENESIS_HASH,
+  formatAah,
+  formatIeumUnits,
   restoreFromMnemonic,
   restoreFromPrivateKey,
   validateTransfer
@@ -30,5 +32,13 @@ describe("IEUM 지갑", () => {
     expect(() => validateTransfer("0x0000000000000000000000000000000000000001", "0")).toThrow();
     expect(validateTransfer("0x0000000000000000000000000000000000000001", "20"))
       .toBe(20_000_000_000_000_000_000n);
+  });
+
+  it("18자리 잔액을 8자리에서 정확히 반올림하고 끝의 0을 제거한다", () => {
+    expect(formatAah(99_999_900_000_000_000_000n)).toBe("99.9999 IEUM");
+    expect(formatIeumUnits(99_231_000_000_000_000_000n)).toBe("99.231");
+    expect(formatIeumUnits(99_999_999_996_000_000_000n)).toBe("100");
+    expect(formatIeumUnits(4_000_000_000n)).toBe("0");
+    expect(formatIeumUnits(5_000_000_000n)).toBe("0.00000001");
   });
 });

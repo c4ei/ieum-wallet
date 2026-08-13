@@ -1,4 +1,4 @@
-import { HDNodeWallet, Mnemonic, Wallet, formatEther, isAddress, parseEther } from "ethers";
+import { HDNodeWallet, Mnemonic, Wallet, isAddress, parseEther } from "ethers";
 
 export const CHAIN_ID = 21004;
 export const EXPECTED_GENESIS_HASH = "0x497e04ac4faec01b78b57d3caef7951fca98b1928a1af558ea03a663aa622418";
@@ -33,6 +33,27 @@ export function validateTransfer(to: string, amount: string) {
 }
 
 export function formatAah(value: bigint): string {
-  const text = formatEther(value);
-  return `${Number(text).toLocaleString("ko-KR", { maximumFractionDigits: 8 })} IEUM`;
+  return `${formatIeumUnits(value)} IEUM`;
+}
+
+export function formatIeumUnits(value: bigint, decimals = 18, maxFractionDigits = 8): string {
+  if (!Number.isInteger(decimals) || decimals < 0) throw new Error("decimals must be a non-negative integer");
+  if (!Number.isInteger(maxFractionDigits) || maxFractionDigits < 0) {
+    throw new Error("maxFractionDigits must be a non-negative integer");
+  }
+  const negative = value < 0n;
+  const absolute = negative ? -value : value;
+  const shownDecimals = Math.min(decimals, maxFractionDigits);
+  const discardedDecimals = decimals - shownDecimals;
+  const roundingUnit = 10n ** BigInt(discardedDecimals);
+  const rounded = discardedDecimals > 0
+    ? (absolute + roundingUnit / 2n) / roundingUnit
+    : absolute;
+  const displayScale = 10n ** BigInt(shownDecimals);
+  const whole = rounded / displayScale;
+  const fraction = shownDecimals > 0
+    ? (rounded % displayScale).toString().padStart(shownDecimals, "0").replace(/0+$/, "")
+    : "";
+  const groupedWhole = whole.toLocaleString("ko-KR");
+  return `${negative ? "-" : ""}${groupedWhole}${fraction ? `.${fraction}` : ""}`;
 }
