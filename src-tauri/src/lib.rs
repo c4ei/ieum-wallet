@@ -8,7 +8,6 @@ use std::path::{Path, PathBuf};
 #[cfg(feature = "embedded-core")]
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
-#[cfg(mobile)]
 use tauri_plugin_opener::OpenerExt;
 #[cfg(feature = "embedded-core")]
 use tauri_plugin_shell::{process::CommandChild, ShellExt};

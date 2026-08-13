@@ -8,10 +8,10 @@ import {
 } from "./wallet";
 
 describe("IEUM 지갑", () => {
-  it("v0.21.8 운영망 식별자를 고정한다", () => {
+  it("현재 IEUM 운영망 식별자를 고정한다", () => {
     expect(CHAIN_ID).toBe(21004);
     expect(EXPECTED_GENESIS_HASH).toBe(
-      "0x9cfb8866763ced88e3b66778013314017783d4cbc6e6cd735cf4fa118abcd944"
+      "0x497e04ac4faec01b78b57d3caef7951fca98b1928a1af558ea03a663aa622418"
     );
   });
 
