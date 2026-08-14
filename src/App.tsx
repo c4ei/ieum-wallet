@@ -70,7 +70,7 @@ import {
 } from "./transferHistory";
 
 type Screen = "home" | "create" | "restore";
-type Tab = "wallet" | "exchange" | "reward" | "social" | "chat" | "site" | "profile";
+type Tab = "wallet" | "grow" | "exchange" | "reward" | "social" | "chat" | "site" | "profile";
 
 // 준비 중인 기능은 코드와 테스트를 유지하되 운영 UI에서는 노출하지 않는다.
 // 추후 빌드 환경변수를 true로 설정하면 다시 표시할 수 있다.
@@ -610,6 +610,13 @@ export default function App() {
     } catch (error) { setMessage(String(error)); }
   }
 
+  async function openAahClub() {
+    try {
+      await invoke("open_aah_club");
+      setMessage("AAH 길드 커뮤니티를 별도 보안 창으로 열었습니다.");
+    } catch (error) { setMessage(`AAH 길드 커뮤니티 열기 실패: ${String(error)}`); }
+  }
+
   async function beginUsdtDeposit() {
     if (!vault) return;
     try {
@@ -937,6 +944,7 @@ export default function App() {
       <header><span className="logo">A</span><div><h1>{profile.nickname || "IEUM Wallet"}</h1><p className={networkOk ? "online" : ""}>● {networkOk ? "IEUM 네트워크 연결됨" : "연결 확인 필요"}</p></div>{!networkOk && <button className="secondary small" onClick={() => setShowNetworkSettings(true)}>연결 문제</button>}<button className="secondary small" onClick={lock}>잠금</button></header>
       <nav className="tabs" aria-label="주요 기능">
         <button className={tab === "wallet" ? "active" : ""} onClick={() => setTab("wallet")}>지갑</button>
+        <button className={tab === "grow" ? "active" : ""} onClick={() => setTab("grow")}>이음마당</button>
         {showUsdtExchange && <button className={tab === "exchange" ? "active" : ""} onClick={() => setTab("exchange")}>USDT 교환</button>}
         {showAdRewards && <button className={tab === "reward" ? "active" : ""} onClick={() => setTab("reward")}>광고 보상</button>}
         <button className={tab === "social" ? "active" : ""} onClick={() => setTab("social")}>친구·그룹</button>
@@ -1001,6 +1009,30 @@ export default function App() {
           : <p className="muted">최근 전송 내역이 없습니다.</p>}
       </section>
       </>}
+      {tab === "grow" && <div className="columns">
+        <section className="card">
+          <span className="eyebrow">들고만 있어도 받는 응원 보상</span>
+          <h2>내 IEUM 함께 키우기</h2>
+          <p>운영 중인 보유 이벤트 기간에는 최소 잔액을 만족한 일반 지갑도 매일 한 번 보상을 받을 수 있습니다. 실제 지급 여부와 금리는 이음마당의 체인 상태를 기준으로 확인하세요.</p>
+          <div className="quote-box"><b>현재 99.9999 IEUM을 5% APR로 맡겼다면 하루 예상 보상</b><p><code>99.9999 × 5% ÷ 365 = 0.013698616438 IEUM</code></p></div>
+          <p className="muted">예상값이며 이벤트 기간·최소 잔액·일일 한도와 스냅샷 잔액에 따라 실제 지급액이 달라질 수 있습니다.</p>
+          <button type="button" onClick={openExplorer}>이음마당에서 지급 상태 보기 ↗</button>
+        </section>
+        <section className="card">
+          <span className="eyebrow">길드 · 최대 100명</span>
+          <h2>친구들과 길드 만들기</h2>
+          <p>지역·취미·프로젝트 등 원하는 이름으로 길드를 만들고 이벤트를 열 수 있습니다. 길드장은 이음지기와 별도 역할입니다.</p>
+          <p><b>새싹 → 길드원 → 운영진 → 부길드장 → 길드장</b></p>
+          <p>길드 생성비는 1 IEUM이며 재단지갑으로 보낸 확정 거래를 이음마당에서 확인한 뒤 생성됩니다.</p>
+          <code>0x356456fF1216B57a6f8891b195b42d296789B67D</code>
+          <button type="button" className="secondary" onClick={openAahClub}>AAH에서 길드 커뮤니티 시작하기 ↗</button>
+        </section>
+        <section className="card">
+          <h2>처음 오셨나요?</h2><p>AAH 가입 → 지갑 연결 → 이음 맡기기 또는 길드 참여 순서로 시작하세요.</p>
+          <a href="https://aah.name" target="_blank" rel="noreferrer">AAH 가입하기 ↗</a>
+          <h3>공개 소스</h3><p><a href="https://github.com/c4ei/ieum-chain" target="_blank" rel="noreferrer">Chain</a> · <a href="https://github.com/c4ei/ieum-wallet" target="_blank" rel="noreferrer">Wallet</a> · <a href="https://github.com/c4ei/ieum-manager" target="_blank" rel="noreferrer">Manager</a></p>
+        </section>
+      </div>}
       {showUsdtExchange && tab === "exchange" && (
         <section className="exchange-layout">
           <div className="card exchange-hero">

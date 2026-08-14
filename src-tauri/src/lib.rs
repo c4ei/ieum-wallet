@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 #[cfg(feature = "embedded-core")]
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
+#[cfg(mobile)]
 use tauri_plugin_opener::OpenerExt;
 #[cfg(feature = "embedded-core")]
 use tauri_plugin_shell::{process::CommandChild, ShellExt};
@@ -406,9 +407,50 @@ fn open_aah_site(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 fn open_ieum_explorer(app: AppHandle) -> Result<(), String> {
-    app.opener()
-        .open_url("https://iem.aah.name", None::<&str>)
-        .map_err(|error| format!("IEUM 익스플로러 열기 실패: {error}"))
+    open_safe_site(
+        app,
+        "ieum-yard",
+        "https://iem.aah.name/",
+        "이음마당 · 지급 상태",
+    )
+}
+
+#[tauri::command]
+fn open_aah_club(app: AppHandle) -> Result<(), String> {
+    open_safe_site(
+        app,
+        "aah-club",
+        "https://aah.name/club",
+        "AAH 길드 커뮤니티",
+    )
+}
+
+fn open_safe_site(app: AppHandle, label: &str, address: &str, title: &str) -> Result<(), String> {
+    #[cfg(mobile)]
+    {
+        return app
+            .opener()
+            .open_url(address, None::<&str>)
+            .map_err(|error| format!("기본 브라우저 열기 실패: {error}"));
+    }
+
+    #[cfg(desktop)]
+    {
+        if let Some(window) = app.get_webview_window(label) {
+            window
+                .set_focus()
+                .map_err(|error| format!("사이트 창 열기 실패: {error}"))?;
+            return Ok(());
+        }
+        let url = Url::parse(address).map_err(|error| format!("사이트 주소 오류: {error}"))?;
+        WebviewWindowBuilder::new(&app, label, WebviewUrl::External(url))
+            .title(title)
+            .inner_size(1100.0, 760.0)
+            .min_inner_size(360.0, 640.0)
+            .build()
+            .map_err(|error| format!("사이트 창 생성 실패: {error}"))?;
+        Ok(())
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -447,7 +489,8 @@ pub fn run() {
             read_call_audit,
             clear_call_audit,
             open_aah_site,
-            open_ieum_explorer
+            open_ieum_explorer,
+            open_aah_club
         ]);
 
     #[cfg(feature = "embedded-core")]
