@@ -10,6 +10,7 @@ git tag -d v0.0.10.13
 git push origin --delete v0.0.10.13
 
 # 현재 HEAD에 태그 재생성 및 푸시
+git push origin HEAD:main
 git tag -a v0.0.10.13 -m "IEUM Wallet v0.0.10.13"
 git push origin v0.0.10.13
 
