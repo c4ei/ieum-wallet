@@ -538,8 +538,9 @@ export default function App() {
   function requestSend(event: FormEvent) {
     event.preventDefault();
     try {
-      validateTransfer(to, amount);
-      setPendingTransfer({ to, amount });
+      const recipient = to.trim();
+      validateTransfer(recipient, amount);
+      setPendingTransfer({ to: recipient, amount });
     } catch (error) {
       setMessage(String(error));
     }
@@ -552,7 +553,8 @@ export default function App() {
         throw new Error("노드가 송금 가능한 정상 상태인지 먼저 새로고침으로 확인해 주세요.");
       }
       setBusy(true);
-      const value = validateTransfer(to, amount);
+      const recipient = pendingTransfer?.to ?? to.trim();
+      const value = validateTransfer(recipient, amount);
       const nonceHex = await rpcCall<string>(rpcUrl, "eth_getTransactionCount", [
         vault.address,
         "pending"
@@ -562,7 +564,7 @@ export default function App() {
         type: 0,
         chainId: CHAIN_ID,
         nonce: Number(parseHexQuantity(nonceHex)),
-        to,
+        to: recipient,
         value,
         gasLimit: 21_000n,
         gasPrice: 1n
@@ -571,7 +573,7 @@ export default function App() {
       setTxHash(hash);
       setTransferHistory(saveTransfer(vault.address, {
         hash,
-        to,
+        to: recipient,
         amount,
         sentAt: new Date().toISOString()
       }));
@@ -1040,7 +1042,7 @@ export default function App() {
           <p>지역·취미·프로젝트 등 원하는 이름으로 길드를 만들고 이벤트를 열 수 있습니다. 길드장은 이음지기와 별도 역할입니다.</p>
           <p><b>새싹 → 길드원 → 운영진 → 부길드장 → 길드장</b></p>
           <p>길드 생성비는 1 IEUM이며 재단지갑으로 보낸 확정 거래를 이음마당에서 확인한 뒤 생성됩니다.</p>
-          <code>0x356456fF1216B57a6f8891b195b42d296789B67D</code>
+          <code>0x356456ff1216b57a6f8891b195b42d296789b67d</code>
           <button type="button" className="secondary" onClick={openAahClub}>AAH에서 길드 커뮤니티 시작하기 ↗</button>
         </section>
         <section className="card">

@@ -32,7 +32,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DISPLAY_VERSION: 0.0.10.15
+  DISPLAY_VERSION: 0.0.10.16
 
 jobs:
   validate:
