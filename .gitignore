@@ -5,3 +5,7 @@ src-tauri/target/
 *.log
 .DS_Store
 .secret
+
+# Private signing keys
+ieum-wallet-updater.key
+*.key.private
