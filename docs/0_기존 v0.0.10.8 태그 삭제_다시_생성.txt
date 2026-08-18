@@ -1,4 +1,4 @@
-0_기존 v0.0.10.13 태그 삭제_다시_생성
+0_기존 v0.0.10.15 태그 삭제_다시_생성
 
 cd /www/ieum-wallet
 
@@ -6,22 +6,22 @@ cd /www/ieum-wallet
 git log -1 --oneline
 
 # 기존 태그 삭제
-git tag -d v0.0.10.13
-git push origin --delete v0.0.10.13
+git tag -d v0.0.10.15
+git push origin --delete v0.0.10.15
 
 # 현재 HEAD에 태그 재생성 및 푸시
 git push origin HEAD:main
-git tag -a v0.0.10.13 -m "IEUM Wallet v0.0.10.13"
-git push origin v0.0.10.13
+git tag -a v0.0.10.15 -m "IEUM Wallet v0.0.10.15"
+git push origin v0.0.10.15
 
 
 
 확인:
 
-git show --no-patch v0.0.10.13
-git ls-remote --tags origin | grep 'v0.0.10.13'
+git show --no-patch v0.0.10.15
+git ls-remote --tags origin | grep 'v0.0.10.15'
 
-GitHub Release가 기존 태그에 연결되어 있었다면 Release도 다시 확인해야 합니다. 또한 다른 서버가 이미 기존 v0.0.10.13을 받아갔다면 태그 캐시가 남을 수 있으므로 그 서버에서는 다음처럼 갱신합니다.
+GitHub Release가 기존 태그에 연결되어 있었다면 Release도 다시 확인해야 합니다. 또한 다른 서버가 이미 기존 v0.0.10.15을 받아갔다면 태그 캐시가 남을 수 있으므로 그 서버에서는 다음처럼 갱신합니다.
 
 git fetch origin --prune --prune-tags --force
 

@@ -68,6 +68,7 @@ import {
   transferPage,
   type TransferHistoryItem
 } from "./transferHistory";
+import { getLanguage, installI18n, setLanguage, type Language } from "./i18n";
 
 type Screen = "home" | "create" | "restore";
 type Tab = "wallet" | "grow" | "exchange" | "reward" | "social" | "chat" | "site" | "profile";
@@ -88,6 +89,7 @@ interface NetworkStatus {
 }
 
 export default function App() {
+  const [language] = useState<Language>(getLanguage);
   const [screen, setScreen] = useState<Screen>("home");
   const [vault, setVault] = useState<VaultPayload | null>(null);
   const [hasVault, setHasVault] = useState(false);
@@ -153,8 +155,13 @@ export default function App() {
   const callIdRef = useRef("");
   const callRoomRef = useRef("");
   const callRecipientsRef = useRef<ReturnType<typeof groupRecipients>>([]);
+  const autoRefreshAddressRef = useRef("");
 
   const wallet = useMemo(() => (vault ? new Wallet(vault.privateKey) : null), [vault]);
+
+  useEffect(() => {
+    return installI18n(language);
+  }, [language]);
 
   useEffect(() => {
     invoke<boolean>("vault_exists").then(setHasVault).catch(() => setHasVault(false));
@@ -180,6 +187,12 @@ export default function App() {
       setTransferPageNumber(1);
     }
   }, [vault]);
+
+  useEffect(() => {
+    if (!vault || walletEdition !== "light" || autoRefreshAddressRef.current === vault.address) return;
+    autoRefreshAddressRef.current = vault.address;
+    void refresh();
+  }, [vault, walletEdition]);
 
   useEffect(() => {
     if (!vault) return;
@@ -844,6 +857,9 @@ export default function App() {
     void finishCall("call_ended", true);
     setVault(null);
     setBalance(0n);
+    setNetworkOk(false);
+    setNetworkStatus(null);
+    autoRefreshAddressRef.current = "";
     setSocialBook(EMPTY_SOCIAL_BOOK);
     setProfile(EMPTY_PROFILE);
     setChatSecret("");
@@ -883,7 +899,7 @@ export default function App() {
   if (!vault) {
     return (
       <main className="shell narrow">
-        <header><span className="logo">A</span><div><h1>IEUM Wallet</h1><p>가볍고 안전한 IEUM 지갑</p></div></header>
+        <header><span className="logo">A</span><div><h1>IEUM Wallet</h1><p>가볍고 안전한 IEUM 지갑</p></div><LanguageSelect language={language} /></header>
         {screen === "home" && (
           <section className="card hero">
             <span className="eyebrow">CHAIN ID {CHAIN_ID}</span>
@@ -941,7 +957,7 @@ export default function App() {
 
   return (
     <main className="shell">
-      <header><span className="logo">A</span><div><h1>{profile.nickname || "IEUM Wallet"}</h1><p className={networkOk ? "online" : ""}>● {networkOk ? "IEUM 네트워크 연결됨" : "연결 확인 필요"}</p></div>{!networkOk && <button className="secondary small" onClick={() => setShowNetworkSettings(true)}>연결 문제</button>}<button className="secondary small" onClick={lock}>잠금</button></header>
+      <header><span className="logo">A</span><div><h1>{profile.nickname || "IEUM Wallet"}</h1><p className={networkOk ? "online" : ""}>● {networkOk ? "IEUM 네트워크 연결됨" : "연결 확인 필요"}</p></div><LanguageSelect language={language} />{!networkOk && <button className="secondary small" onClick={() => setShowNetworkSettings(true)}>연결 문제</button>}<button className="secondary small" onClick={lock}>잠금</button></header>
       <nav className="tabs" aria-label="주요 기능">
         <button className={tab === "wallet" ? "active" : ""} onClick={() => setTab("wallet")}>지갑</button>
         <button className={tab === "grow" ? "active" : ""} onClick={() => setTab("grow")}>이음마당</button>
@@ -1369,4 +1385,8 @@ export default function App() {
       {message && <div className="toast">{message}</div>}
     </main>
   );
+}
+
+function LanguageSelect({ language }: { language: Language }) {
+  return <label className="language-select" aria-label="Language"><span className="sr-only">Language</span><select value={language} onChange={event => setLanguage(event.target.value as Language)}><option value="ko">한국어</option><option value="en">English</option></select></label>;
 }
