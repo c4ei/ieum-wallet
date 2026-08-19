@@ -1217,7 +1217,7 @@ export default function App() {
                 inputMode="decimal" placeholder="1명당 보낼 IEUM" required />
               <button disabled={busy}>구성원별 순차 전송</button>
             </form>
-            <p className="warning">다중 송금 컨트랙트가 없어 일부 거래만 성공할 수 있습니다. 테스트넷에서 소액으로 확인하세요.</p>
+            <p className="warning">다중 송금은 일부 거래만 성공할 수 있습니다. 메인넷에서도 반드시 소액으로 먼저 확인하세요.</p>
           </section>
         </div>
       )}
