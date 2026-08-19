@@ -13,7 +13,7 @@ describe("IEUM 지갑", () => {
   it("현재 IEUM 운영망 식별자를 고정한다", () => {
     expect(CHAIN_ID).toBe(21004);
     expect(EXPECTED_GENESIS_HASH).toBe(
-      "0x497e04ac4faec01b78b57d3caef7951fca98b1928a1af558ea03a663aa622418"
+      "0xc7a4f99b113341db7705117dedb240bb3ea3b0b99c115d134ddf505be1ff8a5a"
     );
   });
 

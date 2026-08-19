@@ -1,10 +1,10 @@
-# IEUM Wallet v0.0.10.18
+# IEUM Wallet v0.0.10.19
 
 https://github.com/c4ei/ieum-wallet
 
-`ieum-chain` 테스트넷(Chain ID `21004`)용 Tauri 2 지갑입니다.
+`ieum-chain` 메인넷(Chain ID `21004`)용 Tauri 2 지갑입니다.
 
-> 이 버전은 개발·사설 테스트넷용입니다. 실제 가치가 있는 자산을 보관하지 마세요.
+> 공식 메인넷 Genesis hash를 확인한 노드에만 연결합니다. SEED와 개인키는 누구에게도 전달하지 마세요.
 
 ## 구현 기능
 
