@@ -1,4 +1,4 @@
-# IEUM Wallet v0.0.10.21
+# IEUM Wallet v0.0.10.22
 
 https://github.com/c4ei/ieum-wallet
 
@@ -80,6 +80,7 @@ cargo run -- --port 7001 --rpc-port 8545
 - [`docs/VERSION_0.0.10.12.md`](docs/VERSION_0.0.10.12.md): 8자리 IEUM 수량 표시와 릴리스 파일명 수정
 - [`docs/VERSION_0.0.10.20.md`](docs/VERSION_0.0.10.20.md): 선택형 통신 수신, 발신자 검증, 로그인 포커스와 latest 릴리스 정리
 - [`docs/VERSION_0.0.10.21.md`](docs/VERSION_0.0.10.21.md): IEUM Cold Wallet 오프라인 서명 연동과 안전한 Raw Transaction 전송
+- [`docs/VERSION_0.0.10.22.md`](docs/VERSION_0.0.10.22.md): macOS 설치 파일과 latest 태그 자동 관리
 
 ## 폴더 구조
 
