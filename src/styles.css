@@ -143,3 +143,9 @@ code { overflow-wrap:anywhere; color:#c6d9e8; }.balance-card img { width:88px; h
 .network-status dt { color: var(--muted); }
 .network-status dd { margin: 0; text-align: right; }
 .language-select{margin-left:auto}.language-select select{border:1px solid var(--line);border-radius:10px;background:var(--card);color:inherit;padding:.55rem .7rem}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.app-version { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:8px 14px; padding:18px 4px 6px; color:#668096; font-size:12px; text-align:center; letter-spacing:.02em; }
+.app-version span { white-space:nowrap; }
+.app-version b { color:#b9ccda; }
+.app-version button { width:auto; min-height:32px; padding:6px 12px; border-radius:999px; font-size:12px; background:#263e50; color:#d9e8f1; }
+.app-version button.update-ready { background:#27c992; color:#062d22; box-shadow:0 0 0 3px rgba(39,201,146,.14); }
+.app-version small { width:100%; color:#526b7f; }

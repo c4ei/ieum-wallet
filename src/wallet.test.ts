@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  APP_VERSION,
   CHAIN_ID,
   EXPECTED_GENESIS_HASH,
   formatAah,
@@ -12,8 +13,9 @@ import {
 describe("IEUM 지갑", () => {
   it("현재 IEUM 운영망 식별자를 고정한다", () => {
     expect(CHAIN_ID).toBe(21004);
+    expect(APP_VERSION).toBe("0.0.10.23");
     expect(EXPECTED_GENESIS_HASH).toBe(
-      "0xc7a4f99b113341db7705117dedb240bb3ea3b0b99c115d134ddf505be1ff8a5a"
+      "0x82cfc3615112766f3eb151a8677890c1b74ce6bce8463a1a3590991c383650f6"
     );
   });
 

@@ -6,7 +6,7 @@ on:
       version:
         description: Release version
         required: true
-        default: 0.0.10.22
+        default: 0.0.10.23
         type: string
       core_ref:
         description: ieum-chain tag, branch, commit or latest for Normal
@@ -32,7 +32,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DISPLAY_VERSION: 0.0.10.22
+  DISPLAY_VERSION: 0.0.10.23
 
 jobs:
   validate:
@@ -48,6 +48,10 @@ jobs:
           npm run validate:release
           npm run validate:ci
           test -n "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
+      - name: Reject an already released or older version
+        env:
+          DISPLAY_VERSION: ${{ inputs.version }}
+        run: node scripts/validate-release-upgrade.mjs
       - run: npm ci
       - run: npm run build
       - run: npm test

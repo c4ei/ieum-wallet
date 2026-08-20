@@ -5,6 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import ieumOrbitLogo from "./assets/ieum-orbit-logo.png";
 import { decryptVault, encryptVault, type VaultPayload } from "./vault";
 import {
+  APP_VERSION,
   CHAIN_ID,
   EXPECTED_GENESIS_HASH,
   REQUIRED_PROTOCOL_VERSION,
@@ -97,6 +98,12 @@ interface NetworkStatus {
   readyForTransactions: boolean;
 }
 
+interface WalletUpdateStatus {
+  currentVersion: string;
+  latestVersion: string;
+  updateAvailable: boolean;
+}
+
 export default function App() {
   const [language] = useState<Language>(getLanguage);
   const [screen, setScreen] = useState<Screen>("home");
@@ -123,6 +130,12 @@ export default function App() {
   const [showNetworkSettings, setShowNetworkSettings] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<WalletUpdateStatus>({
+    currentVersion: APP_VERSION,
+    latestVersion: "",
+    updateAvailable: false
+  });
+  const [updateBusy, setUpdateBusy] = useState(false);
   const [qr, setQr] = useState("");
   const [tab, setTab] = useState<Tab>("wallet");
   const [rewardStatus, setRewardStatus] = useState<RewardStatus>(() =>
@@ -183,7 +196,36 @@ export default function App() {
     invoke<boolean>("vault_exists").then(setHasVault).catch(() => setHasVault(false));
     const savedRpc = localStorage.getItem("aah-rpc-url");
     if (savedRpc) setRpcUrl(savedRpc);
+    void checkUpdate(false);
   }, []);
+
+  async function checkUpdate(showResult = true) {
+    setUpdateBusy(true);
+    try {
+      const status = await invoke<WalletUpdateStatus>("check_wallet_update");
+      setUpdateStatus(status);
+      if (showResult) {
+        setMessage(status.updateAvailable
+          ? `새 버전 v${status.latestVersion}을 설치할 수 있습니다.`
+          : "현재 최신 버전을 사용하고 있습니다.");
+      }
+    } catch (error) {
+      if (showResult) setMessage(String(error));
+    } finally {
+      setUpdateBusy(false);
+    }
+  }
+
+  async function installUpdate() {
+    setUpdateBusy(true);
+    setMessage("업데이트를 내려받아 설치하고 있습니다. 앱이 자동으로 다시 시작됩니다.");
+    try {
+      await invoke("install_wallet_update");
+    } catch (error) {
+      setMessage(String(error));
+      setUpdateBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (vault) {
@@ -1078,6 +1120,7 @@ export default function App() {
             </form>
           </section>
         )}
+        <VersionStatus status={updateStatus} busy={updateBusy} onCheck={() => void checkUpdate()} onInstall={() => void installUpdate()} />
         {message && <div className="toast">{message}</div>}
       </main>
     );
@@ -1555,8 +1598,28 @@ export default function App() {
           </section>
         </div>
       )}
+      <VersionStatus status={updateStatus} busy={updateBusy} onCheck={() => void checkUpdate()} onInstall={() => void installUpdate()} />
       {message && <div className="toast">{message}</div>}
     </main>
+  );
+}
+
+function VersionStatus({ status, busy, onCheck, onInstall }: {
+  status: WalletUpdateStatus;
+  busy: boolean;
+  onCheck: () => void;
+  onInstall: () => void;
+}) {
+  return (
+    <footer className="app-version">
+      <span>현재 버전 <b>v{status.currentVersion}</b></span>
+      <span>최신 버전 <b>{status.latestVersion ? `v${status.latestVersion}` : "확인 중"}</b></span>
+      <button className={status.updateAvailable ? "update-ready" : ""}
+        disabled={busy} onClick={status.updateAvailable ? onInstall : onCheck}>
+        {busy ? "확인 중…" : status.updateAvailable ? "업데이트 설치" : "업데이트 확인"}
+      </button>
+      <small>Mainnet {CHAIN_ID}</small>
+    </footer>
   );
 }
 
