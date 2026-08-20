@@ -1,4 +1,4 @@
-# IEUM Wallet v0.0.10.20
+# IEUM Wallet v0.0.10.21
 
 https://github.com/c4ei/ieum-wallet
 
@@ -14,6 +14,8 @@ https://github.com/c4ei/ieum-wallet
 - 비밀번호 기반 AES-256-GCM 로컬 암호화 보관
 - IEUM 잔액 및 nonce 확인
 - EIP-155 legacy raw transaction 로컬 서명·전송
+- IEUM Cold Wallet용 서명 전 거래 JSON 저장
+- 콜드월렛 서명 결과의 발신자·수신자·금액·nonce·수수료 대조 후 전송
 - 내 주소 QR 표시
 - IEUM RPC 주소 및 Chain ID 검증
 - 반응형 PC·모바일 화면
@@ -77,6 +79,7 @@ cargo run -- --port 7001 --rpc-port 8545
 - [`docs/VERSION_0.0.10.11.md`](docs/VERSION_0.0.10.11.md): 다중 RPC 장애조치, 운영망 재검증, Explorer 연결과 데스크톱 빌드 수정
 - [`docs/VERSION_0.0.10.12.md`](docs/VERSION_0.0.10.12.md): 8자리 IEUM 수량 표시와 릴리스 파일명 수정
 - [`docs/VERSION_0.0.10.20.md`](docs/VERSION_0.0.10.20.md): 선택형 통신 수신, 발신자 검증, 로그인 포커스와 latest 릴리스 정리
+- [`docs/VERSION_0.0.10.21.md`](docs/VERSION_0.0.10.21.md): IEUM Cold Wallet 오프라인 서명 연동과 안전한 Raw Transaction 전송
 
 ## 폴더 구조
 
