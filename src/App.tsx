@@ -70,6 +70,13 @@ import {
   type TransferHistoryItem
 } from "./transferHistory";
 import { getLanguage, installI18n, setLanguage, type Language } from "./i18n";
+import {
+  assertSignedTransactionMatches,
+  createOfflineUnsignedTransaction,
+  reviewSignedTransaction,
+  type OfflineUnsignedTransaction,
+  type SignedTransactionReview
+} from "./offlineTransaction";
 
 type Screen = "home" | "create" | "restore";
 type Tab = "wallet" | "grow" | "exchange" | "reward" | "social" | "chat" | "site" | "profile";
@@ -131,6 +138,10 @@ export default function App() {
   const [profile, setProfile] = useState<UserProfile>(EMPTY_PROFILE);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [pendingTransfer, setPendingTransfer] = useState<{ to: string; amount: string } | null>(null);
+  const [offlineUnsigned, setOfflineUnsigned] = useState<OfflineUnsignedTransaction | null>(null);
+  const [offlineJson, setOfflineJson] = useState("");
+  const [signedRaw, setSignedRaw] = useState("");
+  const [signedReview, setSignedReview] = useState<SignedTransactionReview | null>(null);
   const [usdtNetwork, setUsdtNetwork] = useState<UsdtNetwork>("TRON");
   const [deposit, setDeposit] = useState<DepositSession | null>(null);
   const [depositQr, setDepositQr] = useState("");
@@ -604,6 +615,92 @@ export default function App() {
     }
   }
 
+  async function prepareOfflineTransfer() {
+    if (!vault) return;
+    try {
+      if (!networkOk || !networkStatus?.readyForTransactions || networkStatus.recoveryActive) {
+        throw new Error("노드가 송금 가능한 정상 상태인지 먼저 새로고침으로 확인해 주세요.");
+      }
+      setBusy(true);
+      const recipient = to.trim();
+      const value = validateTransfer(recipient, amount);
+      const [chainHex, nonceHex] = await Promise.all([
+        rpcCall<string>(rpcUrl, "eth_chainId", []),
+        rpcCall<string>(rpcUrl, "eth_getTransactionCount", [vault.address, "pending"])
+      ]);
+      if (parseHexQuantity(chainHex) !== BigInt(CHAIN_ID)) {
+        throw new Error(`IEUM Mainnet(Chain ID ${CHAIN_ID})에 연결되지 않았습니다.`);
+      }
+      const transaction = createOfflineUnsignedTransaction(
+        parseHexQuantity(nonceHex), recipient, value
+      );
+      const json = JSON.stringify(transaction, null, 2);
+      setOfflineUnsigned(transaction);
+      setOfflineJson(json);
+      setSignedRaw("");
+      setSignedReview(null);
+      setMessage("콜드월렛으로 옮길 거래 파일을 만들었습니다. 받는 주소와 수량을 다시 확인하세요.");
+    } catch (error) {
+      setMessage(String(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function saveOfflineJson() {
+    if (!offlineJson) return;
+    const blob = new Blob([offlineJson], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `ieum-unsigned-${offlineUnsigned?.nonce ?? "transaction"}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function inspectOfflineSignature() {
+    if (!vault || !offlineUnsigned) return;
+    try {
+      const review = reviewSignedTransaction(signedRaw);
+      assertSignedTransactionMatches(review, offlineUnsigned, vault.address);
+      setSignedReview(review);
+      setMessage("서명 결과가 처음 만든 거래와 정확히 일치합니다. 이제 전송할 수 있습니다.");
+    } catch (error) {
+      setSignedReview(null);
+      setMessage(String(error));
+    }
+  }
+
+  async function broadcastOfflineSignature() {
+    if (!vault || !offlineUnsigned || !signedReview) return;
+    try {
+      setBusy(true);
+      assertSignedTransactionMatches(signedReview, offlineUnsigned, vault.address);
+      const hash = await rpcCall<string>(rpcUrl, "eth_sendRawTransaction", [signedReview.raw]);
+      const shownAmount = formatEther(BigInt(offlineUnsigned.value));
+      setTxHash(hash);
+      setTransferHistory(saveTransfer(vault.address, {
+        hash,
+        to: offlineUnsigned.to,
+        amount: shownAmount,
+        sentAt: new Date().toISOString()
+      }));
+      setTransferPageNumber(1);
+      setOfflineUnsigned(null);
+      setOfflineJson("");
+      setSignedRaw("");
+      setSignedReview(null);
+      setTo("");
+      setAmount("");
+      setMessage("콜드월렛에서 서명한 거래를 네트워크에 전송했습니다.");
+      await refresh();
+    } catch (error) {
+      setMessage(String(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function storeProfile(event: FormEvent) {
     event.preventDefault();
     if (!vault) return;
@@ -1035,6 +1132,45 @@ export default function App() {
           </div>}
         </section>
       </div>
+      <section className="card offline-transfer">
+        <span className="eyebrow">USB 콜드월렛 연결</span>
+        <h2>인터넷 없는 컴퓨터에서 안전하게 서명하기</h2>
+        <p>위의 받는 주소와 수량을 입력한 뒤 아래 순서대로 진행하세요. 개인키나 금고 파일은 이 온라인 지갑으로 가져오지 않습니다.</p>
+        <ol className="offline-steps">
+          <li><b>거래 파일 만들기</b><span>현재 nonce와 IEUM Mainnet 정보를 자동으로 넣습니다.</span></li>
+          <li><b>콜드월렛에서 확인·서명</b><span>JSON만 USB로 옮기고 주소와 수량을 확인합니다.</span></li>
+          <li><b>서명 결과 확인·전송</b><span>원래 거래와 정확히 같은지 검사한 뒤 네트워크에 전송합니다.</span></li>
+        </ol>
+        <button type="button" onClick={prepareOfflineTransfer} disabled={busy || !to || !amount}>
+          1. 콜드월렛용 거래 만들기
+        </button>
+        {offlineJson && <div className="offline-box">
+          <label>서명 전 거래 JSON<textarea value={offlineJson} readOnly spellCheck={false} /></label>
+          <div className="actions">
+            <button type="button" className="secondary" onClick={saveOfflineJson}>JSON 파일로 저장</button>
+            <button type="button" className="secondary" onClick={() => navigator.clipboard.writeText(offlineJson)}>JSON 복사</button>
+          </div>
+          <label>콜드월렛에서 가져온 서명 결과
+            <textarea value={signedRaw} onChange={(event) => {
+              setSignedRaw(event.target.value);
+              setSignedReview(null);
+            }} placeholder="0x로 시작하는 서명된 Raw Transaction을 붙여 넣으세요." spellCheck={false} />
+          </label>
+          <button type="button" className="secondary" onClick={inspectOfflineSignature} disabled={!signedRaw || busy}>
+            3. 서명 결과 확인
+          </button>
+          {signedReview && <div className="signed-review">
+            <strong>원래 거래와 일치합니다</strong>
+            <dl>
+              <dt>보내는 주소</dt><dd><code>{signedReview.from}</code></dd>
+              <dt>받는 주소</dt><dd><code>{signedReview.to}</code></dd>
+              <dt>보낼 수량</dt><dd>{formatEther(signedReview.value)} IEUM</dd>
+              <dt>거래 순서</dt><dd>{signedReview.nonce}</dd>
+            </dl>
+            <button type="button" onClick={broadcastOfflineSignature} disabled={busy}>검토한 거래 전송</button>
+          </div>}
+        </div>}
+      </section>
       <section className="card">
         <h2>최근 전송</h2>
         {transferHistory.length > 0 ? <>

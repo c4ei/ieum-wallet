@@ -90,7 +90,28 @@ const english: Record<string, string> = {
   "예상 수수료": "Estimated fee",
   "블록체인 송금은 전송 후 취소할 수 없습니다.": "Blockchain transfers cannot be canceled after submission.",
   "확인하고 보내기": "Confirm and send",
-  "취소": "Cancel"
+  "취소": "Cancel",
+  "USB 콜드월렛 연결": "USB cold wallet",
+  "인터넷 없는 컴퓨터에서 안전하게 서명하기": "Sign safely on an offline computer",
+  "위의 받는 주소와 수량을 입력한 뒤 아래 순서대로 진행하세요. 개인키나 금고 파일은 이 온라인 지갑으로 가져오지 않습니다.": "Enter the recipient and amount above, then follow these steps. Never bring your private key or vault file into this online wallet.",
+  "거래 파일 만들기": "Create transaction file",
+  "현재 nonce와 IEUM Mainnet 정보를 자동으로 넣습니다.": "The current nonce and IEUM Mainnet details are filled in automatically.",
+  "콜드월렛에서 확인·서명": "Review and sign in the cold wallet",
+  "JSON만 USB로 옮기고 주소와 수량을 확인합니다.": "Move only the JSON by USB and verify the recipient and amount.",
+  "서명 결과 확인·전송": "Review and broadcast the signature",
+  "원래 거래와 정확히 같은지 검사한 뒤 네트워크에 전송합니다.": "Verify that it exactly matches the original transaction before broadcasting.",
+  "1. 콜드월렛용 거래 만들기": "1. Create cold-wallet transaction",
+  "서명 전 거래 JSON": "Unsigned transaction JSON",
+  "JSON 파일로 저장": "Save JSON file",
+  "JSON 복사": "Copy JSON",
+  "콜드월렛에서 가져온 서명 결과": "Signed result from the cold wallet",
+  "0x로 시작하는 서명된 Raw Transaction을 붙여 넣으세요.": "Paste the signed Raw Transaction beginning with 0x.",
+  "3. 서명 결과 확인": "3. Review signed result",
+  "원래 거래와 일치합니다": "Matches the original transaction",
+  "보내는 주소": "Sender address",
+  "보낼 수량": "Amount to send",
+  "거래 순서": "Transaction nonce",
+  "검토한 거래 전송": "Broadcast reviewed transaction"
 };
 
 const dynamicRules: Array<[RegExp, (match: RegExpMatchArray) => string]> = [
