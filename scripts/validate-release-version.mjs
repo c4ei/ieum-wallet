@@ -13,6 +13,8 @@ const packageJson = JSON.parse(await readFile("package.json", "utf8"));
 const tauriConfig = JSON.parse(await readFile("src-tauri/tauri.conf.json", "utf8"));
 const cargoToml = await readFile("src-tauri/Cargo.toml", "utf8");
 const cargoVersion = cargoToml.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
+const walletSource = await readFile("src/wallet.ts", "utf8");
+const visibleVersion = walletSource.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1];
 
 const versions = {
   "package.json": packageJson.version,
@@ -24,6 +26,10 @@ for (const [file, actual] of Object.entries(versions)) {
   if (actual !== internalVersion) {
     throw new Error(`${file}: expected ${internalVersion}, found ${actual ?? "missing"}`);
   }
+}
+
+if (visibleVersion !== displayVersion) {
+  throw new Error(`src/wallet.ts APP_VERSION: expected ${displayVersion}, found ${visibleVersion ?? "missing"}`);
 }
 
 console.log(`Release version validated: ${displayVersion} (${internalVersion})`);

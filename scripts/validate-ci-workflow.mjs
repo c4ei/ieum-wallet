@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 
 const workflowPath = ".github/workflows/wallet-build.yml";
 const workflow = await readFile(workflowPath, "utf8");
+const upgradeGuard = await readFile("scripts/validate-release-upgrade.mjs", "utf8");
 
 const required = new Map([
   ["actions/checkout@v5", "Node 24 기반 checkout 액션을 사용해야 합니다."],
@@ -20,6 +21,7 @@ const required = new Map([
   ["macos-15", "Apple Silicon Mac DMG 빌드가 필요합니다."],
   ["git push origin refs/tags/wallet-normal-latest --force", "Normal latest 태그를 현재 소스로 이동해야 합니다."],
   ["git push origin refs/tags/wallet-light-latest --force", "Light latest 태그를 현재 소스로 이동해야 합니다."],
+  ["validate-release-upgrade.mjs", "이미 배포된 버전의 재사용을 차단해야 합니다."],
 ]);
 
 for (const [pattern, message] of required) {
@@ -34,6 +36,10 @@ if (/actions\/(?:checkout|setup-node)@v4\b/.test(workflow)) {
 
 if (/releaseAssetNamePattern:.*\[bundle\].*\[ext\]/.test(workflow)) {
   throw new Error(`${workflowPath}: bundle 이름과 확장자를 함께 사용하면 msi.msi 같은 중복 이름이 생성됩니다.`);
+}
+
+if (!upgradeGuard.includes("compare(candidate, released) <= 0")) {
+  throw new Error("배포 버전보다 크지 않은 버전을 거부해야 합니다.");
 }
 
 console.log("Wallet CI regression guards passed.");

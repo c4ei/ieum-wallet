@@ -21,6 +21,69 @@ const VAULT_FILE: &str = "wallet.aahvault";
 const CALL_AUDIT_FILE: &str = "call-audit.jsonl";
 const CEX_BASE_URL: &str = "https://cex.aah.name";
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WalletUpdateStatus {
+    current_version: String,
+    latest_version: String,
+    update_available: bool,
+}
+
+#[tauri::command]
+async fn check_wallet_update(app: AppHandle) -> Result<WalletUpdateStatus, String> {
+    let current_version = app.package_info().version.to_string();
+
+    #[cfg(desktop)]
+    {
+        let update = app
+            .updater()
+            .map_err(|error| format!("업데이트 기능 초기화 실패: {error}"))?
+            .check()
+            .await
+            .map_err(|error| format!("최신 버전 확인 실패: {error}"))?;
+        let latest_version = update
+            .as_ref()
+            .map_or_else(|| current_version.clone(), |item| item.version.to_string());
+        Ok(WalletUpdateStatus {
+            current_version,
+            latest_version,
+            update_available: update.is_some(),
+        })
+    }
+
+    #[cfg(not(desktop))]
+    Ok(WalletUpdateStatus {
+        latest_version: current_version.clone(),
+        current_version,
+        update_available: false,
+    })
+}
+
+#[tauri::command]
+async fn install_wallet_update(app: AppHandle) -> Result<(), String> {
+    #[cfg(desktop)]
+    {
+        let Some(update) = app
+            .updater()
+            .map_err(|error| format!("업데이트 기능 초기화 실패: {error}"))?
+            .check()
+            .await
+            .map_err(|error| format!("최신 버전 확인 실패: {error}"))?
+        else {
+            return Err("이미 최신 버전을 사용하고 있습니다.".to_string());
+        };
+
+        update
+            .download_and_install(|_, _| {}, || {})
+            .await
+            .map_err(|error| format!("업데이트 다운로드 또는 설치 실패: {error}"))?;
+        app.restart();
+    }
+
+    #[cfg(not(desktop))]
+    Err("모바일 앱 업데이트는 앱 배포 페이지에서 진행해 주세요.".to_string())
+}
+
 #[cfg(feature = "embedded-core")]
 struct EmbeddedCore(Mutex<Option<CommandChild>>);
 
@@ -470,12 +533,6 @@ pub fn run() {
             {
                 app.handle()
                     .plugin(tauri_plugin_updater::Builder::new().build())?;
-                let handle = app.handle().clone();
-                tauri::async_runtime::spawn(async move {
-                    if let Err(error) = check_and_install_update(handle).await {
-                        eprintln!("[월렛 자동 업데이트] 확인 또는 설치 실패: {error}");
-                    }
-                });
             }
             Ok(())
         })
@@ -490,7 +547,9 @@ pub fn run() {
             clear_call_audit,
             open_aah_site,
             open_ieum_explorer,
-            open_aah_club
+            open_aah_club,
+            check_wallet_update,
+            install_wallet_update
         ]);
 
     #[cfg(feature = "embedded-core")]
@@ -503,39 +562,6 @@ pub fn run() {
     builder
         .run(tauri::generate_context!())
         .expect("IEUM Wallet 실행 중 오류가 발생했습니다.");
-}
-
-#[cfg(desktop)]
-async fn check_and_install_update(app: AppHandle) -> Result<(), String> {
-    let Some(update) = app
-        .updater()
-        .map_err(|error| format!("업데이트 기능 초기화 실패: {error}"))?
-        .check()
-        .await
-        .map_err(|error| format!("최신 버전 확인 실패: {error}"))?
-    else {
-        println!("[월렛 자동 업데이트] 현재 버전이 최신입니다.");
-        return Ok(());
-    };
-
-    println!(
-        "[월렛 자동 업데이트] 새 버전 {}을 내려받습니다.",
-        update.version
-    );
-    update
-        .download_and_install(
-            |downloaded, total| {
-                if let Some(total) = total {
-                    println!("[월렛 자동 업데이트] {downloaded}/{total} bytes");
-                }
-            },
-            || println!("[월렛 자동 업데이트] 다운로드 완료, 설치를 시작합니다."),
-        )
-        .await
-        .map_err(|error| format!("업데이트 다운로드 또는 설치 실패: {error}"))?;
-
-    println!("[월렛 자동 업데이트] 설치 완료, 월렛을 다시 시작합니다.");
-    app.restart();
 }
 
 #[cfg(test)]
