@@ -75,7 +75,7 @@ fn start_embedded_core(app: &AppHandle) -> Result<Option<CommandChild>, String> 
 fn stop_embedded_core(app: &AppHandle) {
     if let Some(state) = app.try_state::<EmbeddedCore>() {
         if let Ok(mut child) = state.0.lock() {
-            if let Some(mut process) = child.take() {
+            if let Some(process) = child.take() {
                 let _ = process.kill();
             }
         }

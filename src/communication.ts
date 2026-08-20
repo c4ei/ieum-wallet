@@ -38,6 +38,19 @@ export interface CommunicationEnvelope {
   encrypted_payload_hex: string;
 }
 
+export function isTrustedCommunication(
+  envelope: CommunicationEnvelope,
+  payload: CommunicationPayload,
+  trustedFriends: Friend[]
+): boolean {
+  const senderAddress = payload.senderAddress.toLowerCase();
+  return trustedFriends.some((friend) =>
+    friend.address.toLowerCase() === senderAddress &&
+    friend.peerId.length > 0 &&
+    friend.peerId === envelope.sender_peer_id
+  );
+}
+
 const MAX_MESSAGE_LENGTH = 4000;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();

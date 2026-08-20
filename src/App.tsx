@@ -33,6 +33,7 @@ import {
 import {
   createRoomSecret,
   decryptCommunication,
+  isTrustedCommunication,
   pollEncryptedChat,
   sendEncryptedChat,
   sendEncryptedSignal,
@@ -96,6 +97,9 @@ export default function App() {
   const [password, setPassword] = useState("");
   const defaultRpcUrl = import.meta.env.VITE_DEFAULT_RPC_URL || "https://irpc.aah.name";
   const walletEdition = import.meta.env.VITE_WALLET_EDITION || "light";
+  const [communicationEnabled, setCommunicationEnabled] = useState(
+    localStorage.getItem("ieum-communication-enabled") === "true"
+  );
   const [rpcUrl, setRpcUrl] = useState(defaultRpcUrl);
   const [balance, setBalance] = useState<bigint>(0n);
   const [networkOk, setNetworkOk] = useState(false);
@@ -225,7 +229,7 @@ export default function App() {
   }, [deposit]);
 
   useEffect(() => {
-    if (!vault || !chatSecret || tab !== "chat") return;
+    if (!vault || !communicationEnabled || !chatSecret || tab !== "chat") return;
     let stopped = false;
     const poll = async () => {
       try {
@@ -233,6 +237,10 @@ export default function App() {
         for (const envelope of envelopes) {
           try {
             const received = await decryptCommunication(envelope.encrypted_payload_hex, chatSecret);
+            const trustedFriends = chatScope === "direct"
+              ? socialBook.friends.filter((friend) => friend.id === chatTargetId)
+              : groupRecipients(socialBook, chatTargetId);
+            if (!isTrustedCommunication(envelope, received, trustedFriends)) continue;
             if (received.packetType === "call_signal") {
               await handleCallSignal(received);
               continue;
@@ -256,7 +264,7 @@ export default function App() {
       stopped = true;
       window.clearInterval(timer);
     };
-  }, [chatSecret, rpcUrl, tab, vault]);
+  }, [chatScope, chatSecret, chatTargetId, communicationEnabled, rpcUrl, socialBook, tab, vault]);
 
   async function auditCall(event: CallAuditEvent) {
     try {
@@ -324,6 +332,7 @@ export default function App() {
 
   async function startCall() {
     try {
+      if (!communicationEnabled) throw new Error("채팅 화면에서 통신 수신을 먼저 켜 주세요.");
       const { recipients, roomId } = selectedCallContext();
       localStorage.setItem("ieum-ice-servers", iceServersJson);
       const callId = crypto.randomUUID();
@@ -363,6 +372,11 @@ export default function App() {
   }
 
   async function acceptCall() {
+    if (!communicationEnabled) {
+      setMessage("채팅 화면에서 통신 수신을 먼저 켜 주세요.");
+      setIncomingCall(null);
+      return;
+    }
     if (!incomingCall || !vault) return;
     try {
       const signal = incomingCall;
@@ -746,6 +760,7 @@ export default function App() {
     event.preventDefault();
     if (!vault) return;
     try {
+      if (!communicationEnabled) throw new Error("채팅 화면에서 통신 수신을 먼저 켜 주세요.");
       const recipients = chatScope === "direct"
         ? socialBook.friends.filter((friend) => friend.id === chatTargetId)
         : groupRecipients(socialBook, chatTargetId);
@@ -878,6 +893,18 @@ export default function App() {
     setMessage(`자동 잠금을 ${minutes}분으로 설정했습니다.`);
   }
 
+  function changeCommunicationEnabled(enabled: boolean) {
+    setCommunicationEnabled(enabled);
+    localStorage.setItem("ieum-communication-enabled", String(enabled));
+    if (!enabled) {
+      setIncomingCall(null);
+      void finishCall("call_ended", true);
+    }
+    setMessage(enabled
+      ? `${walletEdition === "normal" ? "Normal" : "Light"} 월렛 통신 수신을 켰습니다.`
+      : "채팅과 통화 수신을 껐습니다.");
+  }
+
   async function loadAuditEntries() {
     try {
       const entries = await invoke<CallAuditEvent[]>("read_call_audit");
@@ -909,6 +936,7 @@ export default function App() {
             {hasVault ? (
               <form onSubmit={unlock} className="stack">
                 <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                  autoFocus autoComplete="current-password"
                   placeholder="지갑 비밀번호" required />
                 <button disabled={busy}>지갑 열기</button>
               </form>
@@ -1226,6 +1254,12 @@ export default function App() {
           <div className="card chat-settings">
             <span className="eyebrow">IEUM CHAIN v0.21.0</span>
             <h2>종단간 암호화 채팅</h2>
+            <label className="check">
+              <input type="checkbox" checked={communicationEnabled}
+                onChange={(event) => changeCommunicationEnabled(event.target.checked)} />
+              이 기기에서 채팅·통화 수신 허용 ({walletEdition === "normal" ? "Normal" : "Light"})
+            </label>
+            {!communicationEnabled && <p className="warning">기본값은 수신 안 함입니다. 켠 동안에만 선택한 친구의 주소와 PeerId가 일치하는 암호화 통신을 확인합니다.</p>}
             <button type="button" className="secondary random-chat" onClick={openRandomFriendChat}>친구 중 랜덤 대화</button>
             <div className="chat-kind">
               <button type="button" className={chatScope === "direct" ? "" : "secondary"}
@@ -1259,7 +1293,7 @@ export default function App() {
             <form className="chat-compose" onSubmit={sendChat}>
               <textarea value={chatText} onChange={(event) => setChatText(event.target.value)}
                 maxLength={4000} placeholder="메시지 입력" required />
-              <button disabled={busy || !chatTargetId || chatSecret.length !== 64}>암호화해 보내기</button>
+              <button disabled={busy || !communicationEnabled || !chatTargetId || chatSecret.length !== 64}>암호화해 보내기</button>
             </form>
           </div>
           <div className="card call-panel">
@@ -1288,7 +1322,7 @@ export default function App() {
                 <button type="button" onClick={acceptCall}>통화 받기</button>
                 <button type="button" className="secondary" onClick={() => setIncomingCall(null)}>거절</button>
               </> : callState === "idle"
-                ? <button type="button" onClick={startCall} disabled={chatScope !== "direct" || !chatTargetId}>통화 시작</button>
+                ? <button type="button" onClick={startCall} disabled={!communicationEnabled || chatScope !== "direct" || !chatTargetId}>통화 시작</button>
                 : <button type="button" className="danger" onClick={() => void finishCall()}>통화 종료</button>}
               <strong>{incomingCall ? "수신 통화" : callState === "idle" ? "대기" : callState === "calling" ? "연결 중" : "보안 연결됨"}</strong>
             </div>

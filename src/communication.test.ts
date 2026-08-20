@@ -1,11 +1,53 @@
 import { webcrypto } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
-import { createRoomSecret, decryptChat, encryptChat, type ChatMessage } from "./communication";
+import {
+  createRoomSecret,
+  decryptChat,
+  encryptChat,
+  isTrustedCommunication,
+  type ChatMessage,
+  type CommunicationEnvelope
+} from "./communication";
 
 beforeAll(() => {
   Object.defineProperty(globalThis, "crypto", {
     value: webcrypto,
     configurable: true,
+  });
+});
+
+describe("통신 발신자 검증", () => {
+  const peerId = "12D3KooW123456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const message: ChatMessage = {
+    id: "message-1",
+    scope: "direct",
+    roomId: "room",
+    senderAddress: "0x0000000000000000000000000000000000000001",
+    senderName: "친구",
+    text: "안녕하세요",
+    sentAt: "2026-08-20T00:00:00.000Z"
+  };
+  const envelope: CommunicationEnvelope = {
+    id: "envelope-1",
+    sender_peer_id: peerId,
+    target_peer_id: "local-peer",
+    kind: "encrypted_chat",
+    created_at: 1,
+    expires_at: 91,
+    encrypted_payload_hex: "00"
+  };
+  const friends = [{
+    id: "friend-1",
+    name: "친구",
+    address: message.senderAddress,
+    peerId,
+    createdAt: message.sentAt
+  }];
+
+  it("주소와 PeerId가 모두 일치할 때만 신뢰한다", () => {
+    expect(isTrustedCommunication(envelope, message, friends)).toBe(true);
+    expect(isTrustedCommunication({ ...envelope, sender_peer_id: `${peerId}A` }, message, friends)).toBe(false);
+    expect(isTrustedCommunication(envelope, { ...message, senderAddress: "0x0000000000000000000000000000000000000002" }, friends)).toBe(false);
   });
 });
 

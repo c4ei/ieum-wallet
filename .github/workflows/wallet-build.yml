@@ -6,7 +6,7 @@ on:
       version:
         description: Release version
         required: true
-        default: 0.0.10.19
+        default: 0.0.10.20
         type: string
       core_ref:
         description: ieum-chain tag, branch, commit or latest for Normal
@@ -32,7 +32,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DISPLAY_VERSION: 0.0.10.19
+  DISPLAY_VERSION: 0.0.10.20
 
 jobs:
   validate:
@@ -52,8 +52,32 @@ jobs:
       - run: npm run build
       - run: npm test
 
-  desktop:
+  clean-latest-assets:
     needs: validate
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Keep only files from this latest build
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          NORMAL_ONLY: ${{ inputs.normal_only }}
+        run: |
+          tags=(wallet-normal-latest)
+          if [ "$NORMAL_ONLY" != "true" ]; then
+            tags+=(wallet-light-latest)
+          fi
+          for tag in "${tags[@]}"; do
+            release_id="$(gh api "repos/$GH_REPO/releases/tags/$tag" --jq .id 2>/dev/null || true)"
+            [ -n "$release_id" ] || continue
+            gh api --paginate "repos/$GH_REPO/releases/$release_id/assets" --jq '.[].id' \
+              | while read -r asset_id; do
+                  [ -n "$asset_id" ] && gh api --method DELETE "repos/$GH_REPO/releases/assets/$asset_id"
+                done
+          done
+
+  desktop:
+    needs: [validate, clean-latest-assets]
     name: ${{ matrix.label }} / ${{ matrix.platform }}
     strategy:
       fail-fast: false

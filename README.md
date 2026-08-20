@@ -1,4 +1,4 @@
-# IEUM Wallet v0.0.10.19
+# IEUM Wallet v0.0.10.20
 
 https://github.com/c4ei/ieum-wallet
 
@@ -76,6 +76,7 @@ cargo run -- --port 7001 --rpc-port 8545
 - [`docs/VERSION_0.0.7.0.md`](docs/VERSION_0.0.7.0.md): 자동 잠금, 주소록 암호화, 감사 기록 관리
 - [`docs/VERSION_0.0.10.11.md`](docs/VERSION_0.0.10.11.md): 다중 RPC 장애조치, 운영망 재검증, Explorer 연결과 데스크톱 빌드 수정
 - [`docs/VERSION_0.0.10.12.md`](docs/VERSION_0.0.10.12.md): 8자리 IEUM 수량 표시와 릴리스 파일명 수정
+- [`docs/VERSION_0.0.10.20.md`](docs/VERSION_0.0.10.20.md): 선택형 통신 수신, 발신자 검증, 로그인 포커스와 latest 릴리스 정리
 
 ## 폴더 구조
 
