@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Wallet, formatEther } from "ethers";
 import QRCode from "qrcode";
 import { invoke } from "@tauri-apps/api/core";
+import ieumOrbitLogo from "./assets/ieum-orbit-logo.png";
 import { decryptVault, encryptVault, type VaultPayload } from "./vault";
 import {
   CHAIN_ID,
@@ -1025,7 +1026,7 @@ export default function App() {
   if (!vault) {
     return (
       <main className="shell narrow">
-        <header><span className="logo">A</span><div><h1>IEUM Wallet</h1><p>가볍고 안전한 IEUM 지갑</p></div><LanguageSelect language={language} /></header>
+        <header><img className="logo" src={ieumOrbitLogo} alt="IEUM" /><div><h1>IEUM Wallet</h1><p>가볍고 안전한 IEUM 지갑</p></div><LanguageSelect language={language} /></header>
         {screen === "home" && (
           <section className="card hero">
             <span className="eyebrow">CHAIN ID {CHAIN_ID}</span>
@@ -1084,7 +1085,7 @@ export default function App() {
 
   return (
     <main className="shell">
-      <header><span className="logo">A</span><div><h1>{profile.nickname || "IEUM Wallet"}</h1><p className={networkOk ? "online" : ""}>● {networkOk ? "IEUM 네트워크 연결됨" : "연결 확인 필요"}</p></div><LanguageSelect language={language} />{!networkOk && <button className="secondary small" onClick={() => setShowNetworkSettings(true)}>연결 문제</button>}<button className="secondary small" onClick={lock}>잠금</button></header>
+      <header><img className="logo" src={ieumOrbitLogo} alt="IEUM" /><div><h1>{profile.nickname || "IEUM Wallet"}</h1><p className={networkOk ? "online" : ""}>● {networkOk ? "IEUM 네트워크 연결됨" : "연결 확인 필요"}</p></div><LanguageSelect language={language} />{!networkOk && <button className="secondary small" onClick={() => setShowNetworkSettings(true)}>연결 문제</button>}<button className="secondary small" onClick={lock}>잠금</button></header>
       <nav className="tabs" aria-label="주요 기능">
         <button className={tab === "wallet" ? "active" : ""} onClick={() => setTab("wallet")}>지갑</button>
         <button className={tab === "grow" ? "active" : ""} onClick={() => setTab("grow")}>이음마당</button>
@@ -1514,7 +1515,7 @@ export default function App() {
           <h2>aah.name</h2>
           <p>IEUM 소식과 웹 서비스를 별도 보안 창에서 확인합니다.</p>
           <div className="site-preview">
-            <span className="logo">A</span>
+            <img className="logo" src={ieumOrbitLogo} alt="IEUM" />
             <div><b>IEUM 공식 사이트</b><small>https://aah.name</small></div>
           </div>
           <button onClick={openAahSite}>IEUM 사이트 열기</button>

@@ -6,7 +6,7 @@ on:
       version:
         description: Release version
         required: true
-        default: 0.0.10.21
+        default: 0.0.10.22
         type: string
       core_ref:
         description: ieum-chain tag, branch, commit or latest for Normal
@@ -32,7 +32,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DISPLAY_VERSION: 0.0.10.21
+  DISPLAY_VERSION: 0.0.10.22
 
 jobs:
   validate:
@@ -82,7 +82,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.normal_only && '[{"edition":"normal","label":"Normal","platform":"Windows","os":"windows-latest","bundles":"nsis,msi","features":"--features embedded-core"},{"edition":"normal","label":"Normal","platform":"Ubuntu","os":"ubuntu-22.04","bundles":"appimage,deb","features":"--features embedded-core"}]' || '[{"edition":"light","label":"Light","platform":"Windows","os":"windows-latest","bundles":"nsis,msi","features":""},{"edition":"light","label":"Light","platform":"Ubuntu","os":"ubuntu-22.04","bundles":"appimage,deb","features":""},{"edition":"normal","label":"Normal","platform":"Windows","os":"windows-latest","bundles":"nsis,msi","features":"--features embedded-core"},{"edition":"normal","label":"Normal","platform":"Ubuntu","os":"ubuntu-22.04","bundles":"appimage,deb","features":"--features embedded-core"}]') }}
+        include: ${{ fromJSON(inputs.normal_only && '[{"edition":"normal","label":"Normal","platform":"Windows","os":"windows-latest","bundles":"nsis,msi","features":"--features embedded-core"},{"edition":"normal","label":"Normal","platform":"Ubuntu","os":"ubuntu-22.04","bundles":"appimage,deb","features":"--features embedded-core"},{"edition":"normal","label":"Normal","platform":"macOS-Intel","os":"macos-15-intel","bundles":"dmg","features":"--features embedded-core"},{"edition":"normal","label":"Normal","platform":"macOS-Apple-Silicon","os":"macos-15","bundles":"dmg","features":"--features embedded-core"}]' || '[{"edition":"light","label":"Light","platform":"Windows","os":"windows-latest","bundles":"nsis,msi","features":""},{"edition":"light","label":"Light","platform":"Ubuntu","os":"ubuntu-22.04","bundles":"appimage,deb","features":""},{"edition":"light","label":"Light","platform":"macOS-Intel","os":"macos-15-intel","bundles":"dmg","features":""},{"edition":"light","label":"Light","platform":"macOS-Apple-Silicon","os":"macos-15","bundles":"dmg","features":""},{"edition":"normal","label":"Normal","platform":"Windows","os":"windows-latest","bundles":"nsis,msi","features":"--features embedded-core"},{"edition":"normal","label":"Normal","platform":"Ubuntu","os":"ubuntu-22.04","bundles":"appimage,deb","features":"--features embedded-core"},{"edition":"normal","label":"Normal","platform":"macOS-Intel","os":"macos-15-intel","bundles":"dmg","features":"--features embedded-core"},{"edition":"normal","label":"Normal","platform":"macOS-Apple-Silicon","os":"macos-15","bundles":"dmg","features":"--features embedded-core"}]') }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
@@ -269,10 +269,30 @@ jobs:
           path: src-tauri/gen/android/app/build/outputs/bundle/**/*.aab
           if-no-files-found: error
 
+  refresh-latest-tags:
+    name: Point stable latest tags at this source
+    needs: desktop
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Move release source tags
+        shell: bash
+        env:
+          NORMAL_ONLY: ${{ inputs.normal_only }}
+        run: |
+          git tag -f wallet-normal-latest "$GITHUB_SHA"
+          git push origin refs/tags/wallet-normal-latest --force
+          if [ "$NORMAL_ONLY" != "true" ]; then
+            git tag -f wallet-light-latest "$GITHUB_SHA"
+            git push origin refs/tags/wallet-light-latest --force
+          fi
+
   migration-default:
     name: Keep 0.0.9.3 users on Light
     if: ${{ !inputs.normal_only }}
-    needs: desktop
+    needs: refresh-latest-tags
     runs-on: ubuntu-22.04
     steps:
       - name: Make Light the default GitHub latest release

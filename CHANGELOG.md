@@ -1,5 +1,12 @@
 # 변경 이력
 
+## 0.0.10.22 - 2026-08-20
+
+- Light·Normal 월렛의 macOS Intel 및 Apple Silicon DMG 빌드 추가
+- 릴리스 완료 후 `wallet-light-latest`, `wallet-normal-latest` 태그를 현재 소스로 자동 이동
+- 기존 Windows·Linux·Android 빌드와 자동 업데이트 파일 유지
+- 앱 화면에는 Cold Wallet과 동일한 IEUM 오빗 로고를 적용하되, 바탕화면 아이콘은 오실행을 막기 위해 Wallet 전용 아이콘 유지
+
 ## 0.0.10.21 - 2026-08-20
 
 - 현재 IEUM Mainnet nonce를 조회해 콜드월렛용 서명 전 JSON을 생성

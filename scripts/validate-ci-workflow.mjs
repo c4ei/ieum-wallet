@@ -16,6 +16,10 @@ const required = new Map([
   ["ref: ${{ steps.resolve-core.outputs.core_ref }}", "Normal 빌드는 해석 및 검증한 Core ref를 checkout해야 합니다."],
   ["IEUM Chain: ${{ matrix.edition == 'normal' && steps.resolve-core.outputs.core_ref || 'remote RPC' }}", "Normal 릴리스에는 포함된 Core 버전을 기록해야 합니다."],
   ["releaseAssetNamePattern: IEUM-Wallet-${{ matrix.label }}-v${{ inputs.version }}-[platform]-[arch][setup].[ext]", "번들 이름과 확장자를 중복한 릴리스 파일명을 사용하면 안 됩니다."],
+  ["macos-15-intel", "Intel Mac DMG 빌드가 필요합니다."],
+  ["macos-15", "Apple Silicon Mac DMG 빌드가 필요합니다."],
+  ["git push origin refs/tags/wallet-normal-latest --force", "Normal latest 태그를 현재 소스로 이동해야 합니다."],
+  ["git push origin refs/tags/wallet-light-latest --force", "Light latest 태그를 현재 소스로 이동해야 합니다."],
 ]);
 
 for (const [pattern, message] of required) {
