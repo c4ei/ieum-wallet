@@ -218,7 +218,7 @@ jobs:
         env:
           NDK_HOME: ${{ env.ANDROID_SDK_ROOT }}/ndk/28.2.13676358
         run: npm run build:android
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: IEUM-Wallet-Light-v${{ inputs.version }}-android-arm64
           path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
@@ -267,7 +267,7 @@ jobs:
           NDK_HOME: ${{ env.ANDROID_SDK_ROOT }}/ndk/28.2.13676358
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: npm run tauri -- android build --ci --aab --target aarch64 --config src-tauri/tauri.light.conf.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: IEUM-Wallet-Light-v${{ inputs.version }}-android-release-aab
           path: src-tauri/gen/android/app/build/outputs/bundle/**/*.aab
