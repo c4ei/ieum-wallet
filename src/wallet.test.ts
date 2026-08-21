@@ -13,7 +13,7 @@ import {
 describe("IEUM 지갑", () => {
   it("현재 IEUM 운영망 식별자를 고정한다", () => {
     expect(CHAIN_ID).toBe(21004);
-    expect(APP_VERSION).toBe("0.0.10.25");
+    expect(APP_VERSION).toBe("0.0.10.26");
     expect(EXPECTED_GENESIS_HASH).toBe(
       "0x82cfc3615112766f3eb151a8677890c1b74ce6bce8463a1a3590991c383650f6"
     );
@@ -34,6 +34,8 @@ describe("IEUM 지갑", () => {
     expect(() => validateTransfer("0x0000000000000000000000000000000000000001", "0")).toThrow();
     expect(validateTransfer("0x0000000000000000000000000000000000000001", "20"))
       .toBe(20_000_000_000_000_000_000n);
+    expect(() => validateTransfer("0x0000000000000000000000000000000000000000", "1")).toThrow(/0번 주소/);
+    expect(() => validateTransfer("0x0000000000000000000000000000000000000001", "1.0000000000000000001")).toThrow(/최대 18자리/);
   });
 
   it("18자리 잔액을 8자리에서 정확히 반올림하고 끝의 0을 제거한다", () => {

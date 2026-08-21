@@ -17,6 +17,13 @@ import {
 } from "./wallet";
 import { parseHexQuantity, rpcCall } from "./rpc";
 import {
+  assertNoPendingTransaction,
+  assertSignedNonceReady,
+  assertSufficientBalance,
+  nonceToSafeNumber,
+  submissionErrorMessage
+} from "./transactionSubmission";
+import {
   createDevelopmentRewardStatus,
   formatRemaining,
   remainingRewardMs,
@@ -67,7 +74,9 @@ import {
 import {
   loadTransferHistory,
   pageCount,
+  reconcilePendingTransfers,
   saveTransfer,
+  storeTransferHistory,
   transferPage,
   transferStatusLabel,
   updateTransferStatus,
@@ -164,6 +173,7 @@ export default function App() {
   const [profile, setProfile] = useState<UserProfile>(EMPTY_PROFILE);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [pendingTransfer, setPendingTransfer] = useState<{ to: string; amount: string } | null>(null);
+  const sendInFlightRef = useRef(false);
   const [offlineUnsigned, setOfflineUnsigned] = useState<OfflineUnsignedTransaction | null>(null);
   const [offlineJson, setOfflineJson] = useState("");
   const [signedRaw, setSignedRaw] = useState("");
@@ -593,6 +603,17 @@ export default function App() {
       }
       const value = await rpcCall<string>(activeRpcUrl, "eth_getBalance", [vault.address, "latest"]);
       setBalance(parseHexQuantity(value));
+      const reconciledHistory = await reconcilePendingTransfers(
+        loadTransferHistory(vault.address),
+        async hash => {
+          const [transaction, receipt] = await Promise.all([
+            rpcCall<unknown | null>(activeRpcUrl, "eth_getTransactionByHash", [hash]),
+            rpcCall<{ status?: string } | null>(activeRpcUrl, "eth_getTransactionReceipt", [hash])
+          ]);
+          return { transaction, receipt };
+        }
+      );
+      setTransferHistory(storeTransferHistory(vault.address, reconciledHistory));
       setNetworkStatus({
         nodeVersion: protocol.nodeVersion,
         protocolVersion: identity.protocolVersion,
@@ -620,7 +641,7 @@ export default function App() {
     try {
       const recipient = to.trim();
       validateTransfer(recipient, amount);
-      setPendingTransfer({ to: recipient, amount });
+      setPendingTransfer({ to: recipient, amount: amount.trim() });
     } catch (error) {
       setMessage(String(error));
     }
@@ -628,19 +649,21 @@ export default function App() {
 
   async function confirmTransaction(hash: string) {
     return waitForTransactionConfirmation(async () => {
-      const [transaction, receipt, pool] = await Promise.all([
+      const [transaction, receipt] = await Promise.all([
         rpcCall<unknown | null>(rpcUrl, "eth_getTransactionByHash", [hash]),
-        rpcCall<{ status?: string } | null>(rpcUrl, "eth_getTransactionReceipt", [hash]),
-        rpcCall<{ pending?: string }>(rpcUrl, "txpool_status", [])
-          .catch(() => ({ pending: "0x0" }))
+        rpcCall<{ status?: string } | null>(rpcUrl, "eth_getTransactionReceipt", [hash])
       ]);
-      const pendingHint = typeof pool.pending === "string" && parseHexQuantity(pool.pending) > 0n;
-      return { transaction, receipt, pendingHint };
+      return { transaction, receipt };
     });
   }
 
   async function send() {
     if (!wallet || !vault) return;
+    if (sendInFlightRef.current) {
+      setMessage("거래를 이미 제출하고 있습니다. 버튼을 다시 누르지 마세요.");
+      return;
+    }
+    sendInFlightRef.current = true;
     try {
       if (!networkOk || !networkStatus?.readyForTransactions || networkStatus.recoveryActive) {
         throw new Error("노드가 송금 가능한 정상 상태인지 먼저 새로고침으로 확인해 주세요.");
@@ -649,15 +672,19 @@ export default function App() {
       const recipient = pendingTransfer?.to ?? to.trim();
       const transferAmount = pendingTransfer?.amount ?? amount;
       const value = validateTransfer(recipient, transferAmount);
-      const nonceHex = await rpcCall<string>(rpcUrl, "eth_getTransactionCount", [
-        vault.address,
-        "pending"
+      assertSufficientBalance(balance, value);
+      const [latestNonceHex, pendingNonceHex] = await Promise.all([
+        rpcCall<string>(rpcUrl, "eth_getTransactionCount", [vault.address, "latest"]),
+        rpcCall<string>(rpcUrl, "eth_getTransactionCount", [vault.address, "pending"])
       ]);
+      const latestNonce = parseHexQuantity(latestNonceHex);
+      const pendingNonce = parseHexQuantity(pendingNonceHex);
+      assertNoPendingTransaction(latestNonce, pendingNonce);
       // ieum-chain v0.6.3이 지원하는 EIP-155 legacy(type-0) 거래를 로컬 서명합니다.
       const raw = await wallet.signTransaction({
         type: 0,
         chainId: CHAIN_ID,
-        nonce: Number(parseHexQuantity(nonceHex)),
+        nonce: nonceToSafeNumber(pendingNonce),
         to: recipient,
         value,
         gasLimit: 21_000n,
@@ -681,10 +708,11 @@ export default function App() {
       setTransferHistory(updateTransferStatus(vault.address, hash, status));
       setMessage(confirmationMessage(status));
     } catch (error) {
-      setMessage(String(error));
+      setMessage(submissionErrorMessage(error));
     } finally {
       setBusy(false);
       setPendingTransfer(null);
+      sendInFlightRef.current = false;
     }
   }
 
@@ -697,15 +725,20 @@ export default function App() {
       setBusy(true);
       const recipient = to.trim();
       const value = validateTransfer(recipient, amount);
-      const [chainHex, nonceHex] = await Promise.all([
+      assertSufficientBalance(balance, value);
+      const [chainHex, latestNonceHex, pendingNonceHex] = await Promise.all([
         rpcCall<string>(rpcUrl, "eth_chainId", []),
+        rpcCall<string>(rpcUrl, "eth_getTransactionCount", [vault.address, "latest"]),
         rpcCall<string>(rpcUrl, "eth_getTransactionCount", [vault.address, "pending"])
       ]);
       if (parseHexQuantity(chainHex) !== BigInt(CHAIN_ID)) {
         throw new Error(`IEUM Mainnet(Chain ID ${CHAIN_ID})에 연결되지 않았습니다.`);
       }
+      const latestNonce = parseHexQuantity(latestNonceHex);
+      const pendingNonce = parseHexQuantity(pendingNonceHex);
+      assertNoPendingTransaction(latestNonce, pendingNonce);
       const transaction = createOfflineUnsignedTransaction(
-        parseHexQuantity(nonceHex), recipient, value
+        pendingNonce, recipient, value
       );
       const json = JSON.stringify(transaction, null, 2);
       setOfflineUnsigned(transaction);
@@ -714,7 +747,7 @@ export default function App() {
       setSignedReview(null);
       setMessage("콜드월렛으로 옮길 거래 파일을 만들었습니다. 받는 주소와 수량을 다시 확인하세요.");
     } catch (error) {
-      setMessage(String(error));
+      setMessage(submissionErrorMessage(error));
     } finally {
       setBusy(false);
     }
@@ -749,6 +782,15 @@ export default function App() {
     try {
       setBusy(true);
       assertSignedTransactionMatches(signedReview, offlineUnsigned, vault.address);
+      const [latestNonceHex, pendingNonceHex] = await Promise.all([
+        rpcCall<string>(rpcUrl, "eth_getTransactionCount", [vault.address, "latest"]),
+        rpcCall<string>(rpcUrl, "eth_getTransactionCount", [vault.address, "pending"])
+      ]);
+      assertSignedNonceReady(
+        BigInt(offlineUnsigned.nonce),
+        parseHexQuantity(latestNonceHex),
+        parseHexQuantity(pendingNonceHex)
+      );
       const hash = await rpcCall<string>(rpcUrl, "eth_sendRawTransaction", [signedReview.raw]);
       const shownAmount = formatEther(BigInt(offlineUnsigned.value));
       setTxHash(hash);
@@ -772,7 +814,7 @@ export default function App() {
       setTransferHistory(updateTransferStatus(vault.address, hash, status));
       setMessage(confirmationMessage(status));
     } catch (error) {
-      setMessage(String(error));
+      setMessage(submissionErrorMessage(error));
     } finally {
       setBusy(false);
     }
@@ -1012,11 +1054,17 @@ export default function App() {
       setBusy(true);
       const recipients = groupRecipients(socialBook, groupId);
       const value = validateTransfer(recipients[0]?.address ?? "", groupAmount);
-      const nonceHex = await rpcCall<string>(rpcUrl, "eth_getTransactionCount", [
-        vault.address,
-        "pending"
+      assertSufficientBalance(balance, value, recipients.length);
+      const [latestNonceHex, pendingNonceHex] = await Promise.all([
+        rpcCall<string>(rpcUrl, "eth_getTransactionCount", [vault.address, "latest"]),
+        rpcCall<string>(rpcUrl, "eth_getTransactionCount", [vault.address, "pending"])
       ]);
-      const firstNonce = Number(parseHexQuantity(nonceHex));
+      const latestNonce = parseHexQuantity(latestNonceHex);
+      const pendingNonce = parseHexQuantity(pendingNonceHex);
+      assertNoPendingTransaction(latestNonce, pendingNonce);
+      const lastNonce = pendingNonce + BigInt(recipients.length - 1);
+      nonceToSafeNumber(lastNonce);
+      const firstNonce = nonceToSafeNumber(pendingNonce);
       const hashes: string[] = [];
       // 현재 체인에는 원자적 다중 송금이 없어 각 구성원에게 순차 전송합니다.
       for (let index = 0; index < recipients.length; index += 1) {
@@ -1026,7 +1074,7 @@ export default function App() {
       setGroupAmount("");
       setMessage(`${hashes.length}명에게 그룹 송금을 요청했습니다.`);
     } catch (error) {
-      setMessage(`그룹 송금 중단: ${String(error)} (이미 접수된 거래는 취소되지 않습니다.)`);
+      setMessage(`그룹 송금 중단: ${submissionErrorMessage(error)} (이미 접수된 거래는 취소되지 않습니다.)`);
     } finally {
       setBusy(false);
     }
@@ -1183,8 +1231,8 @@ export default function App() {
         <section className="card">
           <h2>IEUM 보내기</h2>
           <form onSubmit={requestSend} className="stack">
-            <label>받는 주소<input value={to} onChange={(e) => setTo(e.target.value)} placeholder="0x..." required /></label>
-            <label>수량<input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder="0.0" required /></label>
+            <label>받는 주소<input value={to} onChange={(e) => { setTo(e.target.value); setPendingTransfer(null); }} placeholder="0x..." required /></label>
+            <label>수량<input value={amount} onChange={(e) => { setAmount(e.target.value); setPendingTransfer(null); }} inputMode="decimal" placeholder="0.0" required /></label>
             <p className="muted">기본 수수료: gas 21,000 × gasPrice 1 · IEUM Chain ID 21004</p>
             <button disabled={busy}>확인 후 전송</button>
           </form>

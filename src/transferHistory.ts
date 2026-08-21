@@ -44,6 +44,32 @@ export function updateTransferStatus(
   return next;
 }
 
+export function storeTransferHistory(address: string, items: TransferHistoryItem[]): TransferHistoryItem[] {
+  const next = items.slice(0, 100);
+  localStorage.setItem(transferHistoryKey(address), JSON.stringify(next));
+  return next;
+}
+
+export async function reconcilePendingTransfers(
+  items: TransferHistoryItem[],
+  lookup: (hash: string) => Promise<{ transaction: unknown | null; receipt: { status?: string } | null }>,
+  maximum = 10
+): Promise<TransferHistoryItem[]> {
+  let inspected = 0;
+  return Promise.all(items.map(async item => {
+    if ((item.status ?? "pending") !== "pending" || inspected >= maximum) return item;
+    inspected += 1;
+    try {
+      const { transaction, receipt } = await lookup(item.hash);
+      if (receipt?.status === "0x1") return { ...item, status: "confirmed" as const };
+      if (receipt?.status === "0x0") return { ...item, status: "failed" as const };
+      return transaction ? { ...item, status: "pending" as const } : item;
+    } catch {
+      return item;
+    }
+  }));
+}
+
 export function transferStatusLabel(status: TransferStatus | undefined): string {
   switch (status) {
     case "confirmed": return "블록 확정";

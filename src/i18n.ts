@@ -111,7 +111,13 @@ const english: Record<string, string> = {
   "보내는 주소": "Sender address",
   "보낼 수량": "Amount to send",
   "거래 순서": "Transaction nonce",
-  "검토한 거래 전송": "Broadcast reviewed transaction"
+  "검토한 거래 전송": "Broadcast reviewed transaction",
+  "이 지갑에서 먼저 보낸 거래가 아직 처리 중입니다. 같은 거래를 다시 보내지 말고 Chain Doctor에서 블록과 mempool 상태를 확인해 주세요.": "A previous transaction from this wallet is still pending. Do not resend it; check the block and mempool status in Chain Doctor.",
+  "동일한 거래가 이미 처리 중입니다. 다시 보내지 말고 기존 거래의 확정을 기다려 주세요.": "The same transaction is already pending. Do not resend it; wait for the existing transaction to be finalized.",
+  "이전 거래가 아직 처리 중이라 새 거래를 보낼 수 없습니다. 수수료를 임의로 올리지 말고 Chain Doctor에서 기존 거래를 먼저 확인해 주세요.": "A previous transaction is still pending, so a new transfer cannot be sent. Do not raise the fee arbitrarily; check the existing transaction in Chain Doctor.",
+  "잔액이 보낼 수량과 네트워크 수수료의 합보다 부족합니다.": "The balance is insufficient for the amount plus the network fee.",
+  "0번 주소로는 보낼 수 없습니다.": "Transfers to the zero address are not allowed.",
+  "보낼 수량은 숫자이며 소수점 이하 최대 18자리여야 합니다.": "The amount must be numeric with at most 18 decimal places."
 };
 
 const dynamicRules: Array<[RegExp, (match: RegExpMatchArray) => string]> = [
