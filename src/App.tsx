@@ -628,11 +628,14 @@ export default function App() {
 
   async function confirmTransaction(hash: string) {
     return waitForTransactionConfirmation(async () => {
-      const [transaction, receipt] = await Promise.all([
+      const [transaction, receipt, pool] = await Promise.all([
         rpcCall<unknown | null>(rpcUrl, "eth_getTransactionByHash", [hash]),
-        rpcCall<{ status?: string } | null>(rpcUrl, "eth_getTransactionReceipt", [hash])
+        rpcCall<{ status?: string } | null>(rpcUrl, "eth_getTransactionReceipt", [hash]),
+        rpcCall<{ pending?: string }>(rpcUrl, "txpool_status", [])
+          .catch(() => ({ pending: "0x0" }))
       ]);
-      return { transaction, receipt };
+      const pendingHint = typeof pool.pending === "string" && parseHexQuantity(pool.pending) > 0n;
+      return { transaction, receipt, pendingHint };
     });
   }
 
@@ -644,7 +647,8 @@ export default function App() {
       }
       setBusy(true);
       const recipient = pendingTransfer?.to ?? to.trim();
-      const value = validateTransfer(recipient, amount);
+      const transferAmount = pendingTransfer?.amount ?? amount;
+      const value = validateTransfer(recipient, transferAmount);
       const nonceHex = await rpcCall<string>(rpcUrl, "eth_getTransactionCount", [
         vault.address,
         "pending"
@@ -664,7 +668,7 @@ export default function App() {
       setTransferHistory(saveTransfer(vault.address, {
         hash,
         to: recipient,
-        amount,
+        amount: transferAmount,
         sentAt: new Date().toISOString(),
         status: "pending"
       }));

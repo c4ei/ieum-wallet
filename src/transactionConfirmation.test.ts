@@ -30,4 +30,13 @@ describe("거래 확정 판정", () => {
     );
     expect(status).toBe("failed");
   });
+
+  it("노드 mempool에 있으면 조회 결과가 null이어도 대기로 표시한다", async () => {
+    const status = await waitForTransactionConfirmation(
+      async () => ({ transaction: null, receipt: null, pendingHint: true }),
+      2,
+      0
+    );
+    expect(status).toBe("pending");
+  });
 });
