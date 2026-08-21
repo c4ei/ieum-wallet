@@ -61,6 +61,9 @@ code { overflow-wrap:anywhere; color:#c6d9e8; }.balance-card img { width:88px; h
 .transfer-list { display:grid; gap:10px; padding:0; list-style:none; }
 .transfer-list li { display:grid; gap:5px; padding:12px; border:1px solid #203449; border-radius:12px; background:#071522; }
 .transfer-list span,.transfer-list small { color:#7d93a9; font-size:12px; overflow-wrap:anywhere; }
+.tx-status { width:max-content; padding:4px 8px; border-radius:999px; font-size:11px; color:#ffcc78; background:#4a351a; }
+.tx-status.confirmed { color:#67edc4; background:#123d33; }
+.tx-status.failed,.tx-status.not_found { color:#ff9a9a; background:#4a2028; }
 .pagination { display:flex; align-items:center; justify-content:center; gap:12px; margin-top:14px; }
 .pagination button { width:auto; padding:8px 14px; }
 .profile-card { max-width:620px; margin:0 auto; }

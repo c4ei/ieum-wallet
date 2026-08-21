@@ -69,8 +69,11 @@ import {
   pageCount,
   saveTransfer,
   transferPage,
+  transferStatusLabel,
+  updateTransferStatus,
   type TransferHistoryItem
 } from "./transferHistory";
+import { waitForTransactionConfirmation } from "./transactionConfirmation";
 import { getLanguage, installI18n, setLanguage, type Language } from "./i18n";
 import {
   assertSignedTransactionMatches,
@@ -96,6 +99,15 @@ interface NetworkStatus {
   finalizedHeight: number;
   recoveryActive: boolean;
   readyForTransactions: boolean;
+}
+
+function confirmationMessage(status: "pending" | "confirmed" | "failed" | "not_found"): string {
+  switch (status) {
+    case "confirmed": return "거래가 블록에 정상 확정되었습니다.";
+    case "failed": return "거래가 블록에 포함됐지만 실행에 실패했습니다.";
+    case "not_found": return "제출한 거래를 체인에서 확인하지 못했습니다. 같은 거래를 다시 보내기 전에 네트워크 상태를 확인하세요.";
+    default: return "거래가 노드에 있으며 블록 확정을 기다리고 있습니다.";
+  }
 }
 
 interface WalletUpdateStatus {
@@ -614,6 +626,16 @@ export default function App() {
     }
   }
 
+  async function confirmTransaction(hash: string) {
+    return waitForTransactionConfirmation(async () => {
+      const [transaction, receipt] = await Promise.all([
+        rpcCall<unknown | null>(rpcUrl, "eth_getTransactionByHash", [hash]),
+        rpcCall<{ status?: string } | null>(rpcUrl, "eth_getTransactionReceipt", [hash])
+      ]);
+      return { transaction, receipt };
+    });
+  }
+
   async function send() {
     if (!wallet || !vault) return;
     try {
@@ -643,13 +665,17 @@ export default function App() {
         hash,
         to: recipient,
         amount,
-        sentAt: new Date().toISOString()
+        sentAt: new Date().toISOString(),
+        status: "pending"
       }));
       setTransferPageNumber(1);
       setAmount("");
       setTo("");
-      setMessage("거래가 노드에 전파되었습니다. 블록 확정 후 잔액에 반영됩니다.");
+      setMessage("거래를 노드에 제출했습니다. 아직 완료가 아니며 블록 확정을 확인하고 있습니다.");
       await refresh();
+      const status = await confirmTransaction(hash);
+      setTransferHistory(updateTransferStatus(vault.address, hash, status));
+      setMessage(confirmationMessage(status));
     } catch (error) {
       setMessage(String(error));
     } finally {
@@ -726,7 +752,8 @@ export default function App() {
         hash,
         to: offlineUnsigned.to,
         amount: shownAmount,
-        sentAt: new Date().toISOString()
+        sentAt: new Date().toISOString(),
+        status: "pending"
       }));
       setTransferPageNumber(1);
       setOfflineUnsigned(null);
@@ -735,8 +762,11 @@ export default function App() {
       setSignedReview(null);
       setTo("");
       setAmount("");
-      setMessage("콜드월렛에서 서명한 거래를 네트워크에 전송했습니다.");
+      setMessage("콜드월렛 서명 거래를 제출했습니다. 블록 확정을 확인하고 있습니다.");
       await refresh();
+      const status = await confirmTransaction(hash);
+      setTransferHistory(updateTransferStatus(vault.address, hash, status));
+      setMessage(confirmationMessage(status));
     } catch (error) {
       setMessage(String(error));
     } finally {
@@ -1221,6 +1251,9 @@ export default function App() {
           <ul className="transfer-list">
             {transferPage(transferHistory, transferPageNumber).map((item) => <li key={item.hash}>
               <b>{item.amount} IEUM</b><span>받는 주소 {item.to}</span>
+              <strong className={`tx-status ${item.status ?? "pending"}`}>
+                {transferStatusLabel(item.status)}
+              </strong>
               <code>{item.hash}</code><small>{new Date(item.sentAt).toLocaleString()}</small>
             </li>)}
           </ul>
