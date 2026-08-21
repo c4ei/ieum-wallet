@@ -1,7 +1,7 @@
 import { HDNodeWallet, Mnemonic, Wallet, isAddress, parseEther } from "ethers";
 
 export const CHAIN_ID = 21004;
-export const APP_VERSION = "0.0.10.23";
+export const APP_VERSION = "0.0.10.24";
 export const EXPECTED_GENESIS_HASH = "0x82cfc3615112766f3eb151a8677890c1b74ce6bce8463a1a3590991c383650f6";
 export const REQUIRED_PROTOCOL_VERSION = 2;
 export const HD_PATH = "m/44'/60'/0'/0/0";

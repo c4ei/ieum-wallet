@@ -1751,7 +1751,7 @@ dependencies = [
 
 [[package]]
 name = "ieum-wallet"
-version = "0.0.10-23"
+version = "0.0.10-24"
 dependencies = [
  "reqwest 0.12.28",
  "serde",
