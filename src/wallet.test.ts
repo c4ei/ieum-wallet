@@ -13,7 +13,7 @@ import {
 describe("IEUM 지갑", () => {
   it("현재 IEUM 운영망 식별자를 고정한다", () => {
     expect(CHAIN_ID).toBe(21004);
-    expect(APP_VERSION).toBe("0.0.10.24");
+    expect(APP_VERSION).toBe("0.0.10.25");
     expect(EXPECTED_GENESIS_HASH).toBe(
       "0x82cfc3615112766f3eb151a8677890c1b74ce6bce8463a1a3590991c383650f6"
     );

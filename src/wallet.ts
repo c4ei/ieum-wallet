@@ -1,7 +1,7 @@
 import { HDNodeWallet, Mnemonic, Wallet, isAddress, parseEther } from "ethers";
 
 export const CHAIN_ID = 21004;
-export const APP_VERSION = "0.0.10.24";
+export const APP_VERSION = "0.0.10.25";
 export const EXPECTED_GENESIS_HASH = "0x82cfc3615112766f3eb151a8677890c1b74ce6bce8463a1a3590991c383650f6";
 export const REQUIRED_PROTOCOL_VERSION = 2;
 export const HD_PATH = "m/44'/60'/0'/0/0";
@@ -28,7 +28,9 @@ export function restoreFromPrivateKey(key: string): Wallet {
 
 export function validateTransfer(to: string, amount: string) {
   if (!isAddress(to)) throw new Error("받는 주소가 올바르지 않습니다.");
-  const value = parseEther(amount);
+  const normalizedAmount = amount.trim();
+  if (!normalizedAmount) throw new Error("보낼 IEUM 수량을 입력해 주세요.");
+  const value = parseEther(normalizedAmount);
   if (value <= 0n) throw new Error("보낼 수량은 0보다 커야 합니다.");
   return value;
 }
