@@ -7,7 +7,6 @@ interface Receipt {
 interface TransactionLookup {
   transaction: unknown | null;
   receipt: Receipt | null;
-  pendingHint?: boolean;
 }
 
 export async function waitForTransactionConfirmation(
@@ -17,8 +16,8 @@ export async function waitForTransactionConfirmation(
 ): Promise<ConfirmationStatus> {
   let transactionWasSeen = false;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const { transaction, receipt, pendingHint } = await lookup();
-    transactionWasSeen ||= transaction !== null || pendingHint === true;
+    const { transaction, receipt } = await lookup();
+    transactionWasSeen ||= transaction !== null;
     if (receipt?.status === "0x1") return "confirmed";
     if (receipt?.status === "0x0") return "failed";
     if (attempt + 1 < attempts && delayMs > 0) {

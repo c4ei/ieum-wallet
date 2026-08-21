@@ -1,4 +1,4 @@
-# IEUM Wallet v0.0.10.25
+# IEUM Wallet v0.0.10.26
 
 https://github.com/c4ei/ieum-wallet
 
@@ -82,6 +82,7 @@ cargo run -- --port 7001 --rpc-port 8545
 - [`docs/VERSION_0.0.10.21.md`](docs/VERSION_0.0.10.21.md): IEUM Cold Wallet 오프라인 서명 연동과 안전한 Raw Transaction 전송
 - [`docs/VERSION_0.0.10.23.md`](docs/VERSION_0.0.10.23.md): macOS 설치 파일, 앱 업데이트와 latest 태그 자동 관리
 - [`docs/VERSION_0.0.10.25_PENDING_TRANSACTION_FIX.md`](docs/VERSION_0.0.10.25_PENDING_TRANSACTION_FIX.md): 전송 금액 고정, mempool 처리 중 표시와 재전송 방지
+- [`docs/VERSION_0.0.10.26_NONCE_AND_DUPLICATE_GUARD.md`](docs/VERSION_0.0.10.26_NONCE_AND_DUPLICATE_GUARD.md): pending nonce와 중복 제출 방지
 
 ## 폴더 구조
 
