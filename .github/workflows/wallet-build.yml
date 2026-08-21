@@ -38,7 +38,7 @@ jobs:
   validate:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - name: Validate source versions and signing secret
@@ -89,7 +89,7 @@ jobs:
         include: ${{ fromJSON(inputs.normal_only && '[{"edition":"normal","label":"Normal","platform":"Windows","os":"windows-latest","bundles":"nsis,msi","features":"--features embedded-core"},{"edition":"normal","label":"Normal","platform":"Ubuntu","os":"ubuntu-22.04","bundles":"appimage,deb","features":"--features embedded-core"},{"edition":"normal","label":"Normal","platform":"macOS-Intel","os":"macos-15-intel","bundles":"dmg","features":"--features embedded-core"},{"edition":"normal","label":"Normal","platform":"macOS-Apple-Silicon","os":"macos-15","bundles":"dmg","features":"--features embedded-core"}]' || '[{"edition":"light","label":"Light","platform":"Windows","os":"windows-latest","bundles":"nsis,msi","features":""},{"edition":"light","label":"Light","platform":"Ubuntu","os":"ubuntu-22.04","bundles":"appimage,deb","features":""},{"edition":"light","label":"Light","platform":"macOS-Intel","os":"macos-15-intel","bundles":"dmg","features":""},{"edition":"light","label":"Light","platform":"macOS-Apple-Silicon","os":"macos-15","bundles":"dmg","features":""},{"edition":"normal","label":"Normal","platform":"Windows","os":"windows-latest","bundles":"nsis,msi","features":"--features embedded-core"},{"edition":"normal","label":"Normal","platform":"Ubuntu","os":"ubuntu-22.04","bundles":"appimage,deb","features":"--features embedded-core"},{"edition":"normal","label":"Normal","platform":"macOS-Intel","os":"macos-15-intel","bundles":"dmg","features":"--features embedded-core"},{"edition":"normal","label":"Normal","platform":"macOS-Apple-Silicon","os":"macos-15","bundles":"dmg","features":"--features embedded-core"}]') }}
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Resolve IEUM Core ref
         id: resolve-core
         if: matrix.edition == 'normal'
@@ -117,7 +117,7 @@ jobs:
           echo "core_ref=$core_ref" >> "$GITHUB_OUTPUT"
       - name: Checkout IEUM Core
         if: matrix.edition == 'normal'
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           repository: c4ei/ieum-chain
           ref: ${{ steps.resolve-core.outputs.core_ref }}
@@ -198,7 +198,7 @@ jobs:
     needs: validate
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - uses: dtolnay/rust-toolchain@stable
@@ -230,7 +230,7 @@ jobs:
     needs: validate
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - uses: dtolnay/rust-toolchain@stable
@@ -278,7 +278,7 @@ jobs:
     needs: desktop
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Move release source tags
