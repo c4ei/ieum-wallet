@@ -33,6 +33,9 @@ npm run version:sync
 웹 코드와 릴리스 워크플로도 `version.json`을 직접 참조합니다. 워크플로의 별도
 `DISPLAY_VERSION` 상수와 수동 version 입력은 제거했습니다.
 
+`v1.0.1.1`처럼 4자리 버전 태그를 push하면 릴리스 워크플로가 자동 실행되며,
+수동 실행도 동일한 `version.json` 값을 사용합니다.
+
 ## 빌드 최적화 및 검증
 
 - 릴리스 사전 검증 단계의 중복 웹 프로덕션 빌드를 제거했습니다.
@@ -46,3 +49,7 @@ npm run validate:ci
 npm run build
 npm test
 ```
+
+git tag -a v1.0.1.1 -m "IEUM Wallet v1.0.1.1"
+git push origin v1.0.1.1
+
