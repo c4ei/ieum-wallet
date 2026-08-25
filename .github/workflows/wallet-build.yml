@@ -3,11 +3,6 @@ name: Build and release IEUM Wallet Light and Normal
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: Release version
-        required: true
-        default: 0.0.10.26
-        type: string
       core_ref:
         description: ieum-chain tag, branch, commit or latest for Normal
         required: true
@@ -31,12 +26,11 @@ concurrency:
   group: wallet-release
   cancel-in-progress: false
 
-env:
-  DISPLAY_VERSION: 0.0.10.26
-
 jobs:
   validate:
     runs-on: ubuntu-22.04
+    outputs:
+      display_version: ${{ steps.version.outputs.display_version }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -44,16 +38,18 @@ jobs:
       - name: Validate source versions and signing secret
         shell: bash
         run: |
-          test "${{ inputs.version }}" = "$DISPLAY_VERSION"
           npm run validate:release
           npm run validate:ci
           test -n "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
+      - name: Resolve canonical wallet version
+        id: version
+        shell: bash
+        run: echo "display_version=$(node -p \"require('./version.json').displayVersion\")" >> "$GITHUB_OUTPUT"
       - name: Reject an already released or older version
         env:
-          DISPLAY_VERSION: ${{ inputs.version }}
+          DISPLAY_VERSION: ${{ steps.version.outputs.display_version }}
         run: node scripts/validate-release-upgrade.mjs
       - run: npm ci
-      - run: npm run build
       - run: npm test
 
   clean-latest-assets:
@@ -179,9 +175,9 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: wallet-${{ matrix.edition }}-latest
-          releaseName: IEUM Wallet ${{ matrix.label }} v${{ inputs.version }}
+          releaseName: IEUM Wallet ${{ matrix.label }} v${{ needs.validate.outputs.display_version }}
           releaseBody: |
-            Signed IEUM Wallet ${{ matrix.label }} v${{ inputs.version }} release.
+            Signed IEUM Wallet ${{ matrix.label }} v${{ needs.validate.outputs.display_version }} release.
             IEUM Chain: ${{ matrix.edition == 'normal' && steps.resolve-core.outputs.core_ref || 'remote RPC' }}
           releaseDraft: false
           prerelease: false
@@ -189,8 +185,8 @@ jobs:
           updaterJsonPreferNsis: true
           uploadUpdaterSignatures: true
           uploadWorkflowArtifacts: true
-          workflowArtifactNamePattern: IEUM-Wallet-${{ matrix.label }}-v${{ inputs.version }}-[platform]-[arch]-[bundle]
-          releaseAssetNamePattern: IEUM-Wallet-${{ matrix.label }}-v${{ inputs.version }}-[platform]-[arch][setup].[ext]
+          workflowArtifactNamePattern: IEUM-Wallet-${{ matrix.label }}-v${{ needs.validate.outputs.display_version }}-[platform]-[arch]-[bundle]
+          releaseAssetNamePattern: IEUM-Wallet-${{ matrix.label }}-v${{ needs.validate.outputs.display_version }}-[platform]-[arch][setup].[ext]
           args: --config src-tauri/tauri.${{ matrix.edition }}.conf.json ${{ matrix.features }} --bundles ${{ matrix.bundles }}
 
   android-light:
@@ -220,7 +216,7 @@ jobs:
         run: npm run build:android
       - uses: actions/upload-artifact@v4
         with:
-          name: IEUM-Wallet-Light-v${{ inputs.version }}-android-arm64
+          name: IEUM-Wallet-Light-v${{ needs.validate.outputs.display_version }}-android-arm64
           path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
 
@@ -269,7 +265,7 @@ jobs:
         run: npm run tauri -- android build --ci --aab --target aarch64 --config src-tauri/tauri.light.conf.json
       - uses: actions/upload-artifact@v4
         with:
-          name: IEUM-Wallet-Light-v${{ inputs.version }}-android-release-aab
+          name: IEUM-Wallet-Light-v${{ needs.validate.outputs.display_version }}-android-release-aab
           path: src-tauri/gen/android/app/build/outputs/bundle/**/*.aab
           if-no-files-found: error
 

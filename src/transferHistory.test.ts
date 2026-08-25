@@ -23,11 +23,18 @@ describe("처리 중 거래 자동 정리", () => {
     expect(result.map(item => item.status)).toEqual(["confirmed", "failed"]);
   });
 
-  it("RPC 일시 장애나 아직 보이지 않는 거래를 임의로 실패 처리하지 않는다", async () => {
-    const item = { hash: "0x1", to: "a", amount: "1", sentAt: "now", status: "pending" as const };
+  it("RPC 일시 장애나 한 번 보이지 않는 거래를 임의로 실패 처리하지 않는다", async () => {
+    const item = { hash: "0x1", to: "a", amount: "1", sentAt: new Date().toISOString(), status: "pending" as const };
     const missing = await reconcilePendingTransfers([item], async () => ({ transaction: null, receipt: null }));
     const outage = await reconcilePendingTransfers([item], async () => { throw new Error("offline"); });
     expect(missing[0].status).toBe("pending");
     expect(outage[0].status).toBe("pending");
+  });
+
+  it("2분 이상 된 거래가 두 번 연속 사라지면 유실 상태로 전환한다", async () => {
+    const item = { hash: "0x1", to: "a", amount: "1", sentAt: new Date(Date.now() - 180_000).toISOString(), status: "pending" as const };
+    const first = await reconcilePendingTransfers([item], async () => ({ transaction: null, receipt: null }));
+    const second = await reconcilePendingTransfers(first, async () => ({ transaction: null, receipt: null }));
+    expect(second[0].status).toBe("dropped");
   });
 });

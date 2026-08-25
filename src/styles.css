@@ -73,6 +73,9 @@ code { overflow-wrap:anywhere; color:#c6d9e8; }.balance-card img { width:88px; h
 .site-preview small { color:#7d93a9; }
 .modal-backdrop { position:fixed; z-index:20; inset:0; display:grid; place-items:center; padding:20px; background:#020812d9; backdrop-filter:blur(8px); }
 .modal { width:min(520px,100%); max-height:calc(100vh - 40px); overflow:auto; }
+.modal-message { margin:14px 0; padding:12px 14px; border:1px solid #5b8cff; border-radius:12px; background:#0b1d3a; color:#eef5ff; }
+.tx-status.delayed { color:#ffd166; }
+.tx-status.dropped, .tx-status.not_found { color:#ff8f8f; }
 .steps { display:grid; gap:12px; padding:0; list-style:none; margin:22px 0; }
 .steps li { display:grid; gap:4px; padding:13px 15px; border-radius:13px; background:#071522; }
 .steps span { color:#8da3b8; font-size:13px; }

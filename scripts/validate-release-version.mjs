@@ -1,7 +1,10 @@
 import { readFile } from "node:fs/promises";
 
-const displayVersion = process.env.DISPLAY_VERSION?.trim();
-if (!displayVersion) throw new Error("DISPLAY_VERSION is required");
+const versionFile = JSON.parse(await readFile("version.json", "utf8"));
+const displayVersion = String(versionFile.displayVersion ?? "").trim();
+if (process.env.DISPLAY_VERSION?.trim() && process.env.DISPLAY_VERSION.trim() !== displayVersion) {
+  throw new Error(`release input ${process.env.DISPLAY_VERSION.trim()} does not match version.json ${displayVersion}`);
+}
 
 const parts = displayVersion.split(".");
 if (parts.length !== 4 || parts.some((part) => !/^\d+$/.test(part))) {
@@ -13,8 +16,6 @@ const packageJson = JSON.parse(await readFile("package.json", "utf8"));
 const tauriConfig = JSON.parse(await readFile("src-tauri/tauri.conf.json", "utf8"));
 const cargoToml = await readFile("src-tauri/Cargo.toml", "utf8");
 const cargoVersion = cargoToml.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
-const walletSource = await readFile("src/wallet.ts", "utf8");
-const visibleVersion = walletSource.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1];
 
 const versions = {
   "package.json": packageJson.version,
@@ -26,10 +27,6 @@ for (const [file, actual] of Object.entries(versions)) {
   if (actual !== internalVersion) {
     throw new Error(`${file}: expected ${internalVersion}, found ${actual ?? "missing"}`);
   }
-}
-
-if (visibleVersion !== displayVersion) {
-  throw new Error(`src/wallet.ts APP_VERSION: expected ${displayVersion}, found ${visibleVersion ?? "missing"}`);
 }
 
 console.log(`Release version validated: ${displayVersion} (${internalVersion})`);
