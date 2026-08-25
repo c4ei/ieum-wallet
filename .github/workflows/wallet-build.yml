@@ -1,6 +1,9 @@
 name: Build and release IEUM Wallet Light and Normal
 
 on:
+  push:
+    tags:
+      - "v*.*.*.*"
   workflow_dispatch:
     inputs:
       core_ref:
@@ -44,7 +47,8 @@ jobs:
       - name: Resolve canonical wallet version
         id: version
         shell: bash
-        run: echo "display_version=$(node -p \"require('./version.json').displayVersion\")" >> "$GITHUB_OUTPUT"
+        run: |
+          node -e 'process.stdout.write("display_version=" + require("./version.json").displayVersion + "\n")' >> "$GITHUB_OUTPUT"
       - name: Reject an already released or older version
         env:
           DISPLAY_VERSION: ${{ steps.version.outputs.display_version }}
