@@ -4,9 +4,14 @@ export interface TransferHistoryItem {
   amount: string;
   sentAt: string;
   status?: TransferStatus;
+  /** 동일 거래를 새 nonce 없이 안전하게 재전파하기 위한 서명 원문입니다. */
+  rawTransaction?: string;
+  nonce?: string;
+  missingChecks?: number;
+  lastCheckedAt?: string;
 }
 
-export type TransferStatus = "pending" | "confirmed" | "failed" | "not_found";
+export type TransferStatus = "pending" | "delayed" | "confirmed" | "failed" | "not_found" | "dropped";
 
 export const TRANSFER_PAGE_SIZE = 5;
 
@@ -57,13 +62,30 @@ export async function reconcilePendingTransfers(
 ): Promise<TransferHistoryItem[]> {
   let inspected = 0;
   return Promise.all(items.map(async item => {
-    if ((item.status ?? "pending") !== "pending" || inspected >= maximum) return item;
+    if (!["pending", "delayed"].includes(item.status ?? "pending") || inspected >= maximum) return item;
     inspected += 1;
     try {
       const { transaction, receipt } = await lookup(item.hash);
       if (receipt?.status === "0x1") return { ...item, status: "confirmed" as const };
       if (receipt?.status === "0x0") return { ...item, status: "failed" as const };
-      return transaction ? { ...item, status: "pending" as const } : item;
+      const lastCheckedAt = new Date().toISOString();
+      if (transaction) {
+        const age = Date.now() - Date.parse(item.sentAt);
+        return {
+          ...item,
+          status: age >= 30_000 ? "delayed" as const : "pending" as const,
+          missingChecks: 0,
+          lastCheckedAt
+        };
+      }
+      const missingChecks = (item.missingChecks ?? 0) + 1;
+      const oldEnoughToClassify = Date.now() - Date.parse(item.sentAt) >= 120_000;
+      return {
+        ...item,
+        status: oldEnoughToClassify && missingChecks >= 2 ? "dropped" as const : item.status,
+        missingChecks,
+        lastCheckedAt
+      };
     } catch {
       return item;
     }
@@ -75,6 +97,8 @@ export function transferStatusLabel(status: TransferStatus | undefined): string 
     case "confirmed": return "블록 확정";
     case "failed": return "거래 실패";
     case "not_found": return "체인에서 확인되지 않음";
+    case "dropped": return "네트워크에서 유실됨";
+    case "delayed": return "확정 지연";
     default: return "처리 중";
   }
 }

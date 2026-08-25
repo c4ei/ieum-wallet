@@ -1,4 +1,4 @@
-export type ConfirmationStatus = "pending" | "confirmed" | "failed" | "not_found";
+export type ConfirmationStatus = "pending" | "delayed" | "confirmed" | "failed" | "not_found" | "dropped";
 
 interface Receipt {
   status?: string;
@@ -15,14 +15,21 @@ export async function waitForTransactionConfirmation(
   delayMs = 1_000
 ): Promise<ConfirmationStatus> {
   let transactionWasSeen = false;
+  let consecutiveMissing = 0;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     const { transaction, receipt } = await lookup();
-    transactionWasSeen ||= transaction !== null;
+    if (transaction !== null) {
+      transactionWasSeen = true;
+      consecutiveMissing = 0;
+    } else if (transactionWasSeen) {
+      consecutiveMissing += 1;
+    }
     if (receipt?.status === "0x1") return "confirmed";
     if (receipt?.status === "0x0") return "failed";
     if (attempt + 1 < attempts && delayMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
-  return transactionWasSeen ? "pending" : "not_found";
+  if (transactionWasSeen && consecutiveMissing >= 3) return "dropped";
+  return transactionWasSeen ? "delayed" : "not_found";
 }

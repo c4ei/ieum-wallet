@@ -30,4 +30,13 @@ describe("거래 확정 판정", () => {
     );
     expect(status).toBe("failed");
   });
+
+  it("한때 보인 거래가 연속으로 사라지면 유실로 판정한다", async () => {
+    let calls = 0;
+    const status = await waitForTransactionConfirmation(async () => {
+      calls += 1;
+      return { transaction: calls === 1 ? { hash: "0x1" } : null, receipt: null };
+    }, 4, 0);
+    expect(status).toBe("dropped");
+  });
 });

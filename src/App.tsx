@@ -110,11 +110,13 @@ interface NetworkStatus {
   readyForTransactions: boolean;
 }
 
-function confirmationMessage(status: "pending" | "confirmed" | "failed" | "not_found"): string {
+function confirmationMessage(status: "pending" | "delayed" | "confirmed" | "failed" | "not_found" | "dropped"): string {
   switch (status) {
     case "confirmed": return "거래가 블록에 정상 확정되었습니다.";
     case "failed": return "거래가 블록에 포함됐지만 실행에 실패했습니다.";
     case "not_found": return "제출한 거래를 체인에서 확인하지 못했습니다. 같은 거래를 다시 보내기 전에 네트워크 상태를 확인하세요.";
+    case "dropped": return "거래가 한때 보였지만 현재 모든 조회에서 사라졌습니다. 거래 내역의 ‘같은 거래 재전송’을 눌러 안전하게 다시 전파할 수 있습니다.";
+    case "delayed": return "거래가 네트워크에 있지만 확정이 지연되고 있습니다. 새 거래를 만들지 말고 상태를 다시 확인해 주세요.";
     default: return "거래가 노드에 있으며 블록 확정을 기다리고 있습니다.";
   }
 }
@@ -697,7 +699,9 @@ export default function App() {
         to: recipient,
         amount: transferAmount,
         sentAt: new Date().toISOString(),
-        status: "pending"
+        status: "pending",
+        rawTransaction: raw,
+        nonce: pendingNonce.toString()
       }));
       setTransferPageNumber(1);
       setAmount("");
@@ -712,6 +716,44 @@ export default function App() {
     } finally {
       setBusy(false);
       setPendingTransfer(null);
+      sendInFlightRef.current = false;
+    }
+  }
+
+  async function rebroadcastTransfer(item: TransferHistoryItem) {
+    if (!vault || !item.rawTransaction || busy || sendInFlightRef.current) return;
+    sendInFlightRef.current = true;
+    setBusy(true);
+    try {
+      const [latestHex, pendingHex] = await Promise.all([
+        rpcCall<string>(rpcUrl, "eth_getTransactionCount", [vault.address, "latest"]),
+        rpcCall<string>(rpcUrl, "eth_getTransactionCount", [vault.address, "pending"])
+      ]);
+      const originalNonce = BigInt(item.nonce ?? "-1");
+      const latestNonce = parseHexQuantity(latestHex);
+      const pendingNonce = parseHexQuantity(pendingHex);
+      if (latestNonce > originalNonce) {
+        throw new Error("이 nonce는 이미 사용됐습니다. 재전송하지 않고 거래 상태를 다시 확인합니다.");
+      }
+      if (pendingNonce > latestNonce) {
+        throw new Error("다른 거래가 이미 처리 중입니다. 기존 거래가 끝날 때까지 기다려 주세요.");
+      }
+      if (latestNonce !== originalNonce) {
+        throw new Error("현재 nonce와 원래 거래 nonce가 달라 안전하게 재전송할 수 없습니다.");
+      }
+      const returnedHash = await rpcCall<string>(rpcUrl, "eth_sendRawTransaction", [item.rawTransaction]);
+      if (returnedHash.toLowerCase() !== item.hash.toLowerCase()) {
+        throw new Error("재전송 결과 해시가 원래 거래와 달라 중단했습니다.");
+      }
+      setTransferHistory(updateTransferStatus(vault.address, item.hash, "pending"));
+      setMessage("새 거래를 만들지 않고 원래 서명 거래를 다시 전파했습니다. 블록 확정을 확인합니다.");
+      const status = await confirmTransaction(item.hash);
+      setTransferHistory(updateTransferStatus(vault.address, item.hash, status));
+      setMessage(confirmationMessage(status));
+    } catch (error) {
+      setMessage(submissionErrorMessage(error));
+    } finally {
+      setBusy(false);
       sendInFlightRef.current = false;
     }
   }
@@ -799,7 +841,9 @@ export default function App() {
         to: offlineUnsigned.to,
         amount: shownAmount,
         sentAt: new Date().toISOString(),
-        status: "pending"
+        status: "pending",
+        rawTransaction: signedReview.raw,
+        nonce: String(offlineUnsigned.nonce)
       }));
       setTransferPageNumber(1);
       setOfflineUnsigned(null);
@@ -1307,6 +1351,14 @@ export default function App() {
                 {transferStatusLabel(item.status)}
               </strong>
               <code>{item.hash}</code><small>{new Date(item.sentAt).toLocaleString()}</small>
+              {(item.status === "dropped" || item.status === "not_found") && item.rawTransaction && (
+                <button type="button" className="secondary small" disabled={busy}
+                  onClick={() => void rebroadcastTransfer(item)}>같은 거래 안전 재전송</button>
+              )}
+              {(item.status === "pending" || item.status === "delayed") && (
+                <button type="button" className="secondary small" disabled={busy}
+                  onClick={() => void refresh()}>거래 상태 다시 확인</button>
+              )}
             </li>)}
           </ul>
           <div className="pagination">
@@ -1679,7 +1731,8 @@ export default function App() {
             <h2>{pendingTransfer.amount} IEUM를 보낼까요?</h2>
             <dl><dt>받는 주소</dt><dd><code>{pendingTransfer.to}</code></dd><dt>예상 수수료</dt><dd>0.000000000000021 IEUM</dd></dl>
             <p className="warning">블록체인 송금은 전송 후 취소할 수 없습니다.</p>
-            <div className="actions"><button onClick={send} disabled={busy}>확인하고 보내기</button><button className="secondary" onClick={() => setPendingTransfer(null)} disabled={busy}>취소</button></div>
+            {message && <p className="modal-message" role="status">{message}</p>}
+            <div className="actions"><button onClick={send} disabled={busy}>{busy ? "네트워크에 제출 중…" : "확인하고 보내기"}</button><button className="secondary" onClick={() => setPendingTransfer(null)} disabled={busy}>취소</button></div>
           </section>
         </div>
       )}
