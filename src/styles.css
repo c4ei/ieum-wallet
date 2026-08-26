@@ -31,6 +31,7 @@ textarea { min-height:100px; resize:vertical; }
 .offline-box { margin-top:18px; padding-top:18px; border-top:1px solid #284139; }
 .offline-box textarea { min-height:150px; font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace; }
 .offline-box .actions { justify-content:flex-start; margin:12px 0 20px; }
+.offline-qr{margin:0 0 18px;padding:18px;border:1px solid #2e725f;border-radius:14px;text-align:center;background:#081b17}.offline-qr img{display:block;width:min(100%,360px);margin:14px auto;background:#fff;border-radius:12px}.button-link{display:inline-flex;margin:8px;padding:10px 14px;border:1px solid #2e725f;border-radius:9px;color:#47e3b5;cursor:pointer;text-decoration:none}
 .signed-review { margin-top:16px; padding:16px; border:1px solid #2e725f; border-radius:14px; background:#081b17; }
 .signed-review>strong { color:#47e3b5; }.signed-review dl { margin:14px 0; }
 .balance-card { background:linear-gradient(135deg,#123952,#0d6b5c); }

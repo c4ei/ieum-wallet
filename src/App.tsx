@@ -178,6 +178,7 @@ export default function App() {
   const sendInFlightRef = useRef(false);
   const [offlineUnsigned, setOfflineUnsigned] = useState<OfflineUnsignedTransaction | null>(null);
   const [offlineJson, setOfflineJson] = useState("");
+  const [offlineQr, setOfflineQr] = useState("");
   const [signedRaw, setSignedRaw] = useState("");
   const [signedReview, setSignedReview] = useState<SignedTransactionReview | null>(null);
   const [usdtNetwork, setUsdtNetwork] = useState<UsdtNetwork>("TRON");
@@ -785,6 +786,7 @@ export default function App() {
       const json = JSON.stringify(transaction, null, 2);
       setOfflineUnsigned(transaction);
       setOfflineJson(json);
+      setOfflineQr(await QRCode.toDataURL(`ieum-unsigned-v1:${JSON.stringify(transaction)}`, { width: 520, margin: 2, errorCorrectionLevel: "M" }));
       setSignedRaw("");
       setSignedReview(null);
       setMessage("콜드월렛으로 옮길 거래 파일을 만들었습니다. 받는 주소와 수량을 다시 확인하세요.");
@@ -848,6 +850,7 @@ export default function App() {
       setTransferPageNumber(1);
       setOfflineUnsigned(null);
       setOfflineJson("");
+      setOfflineQr("");
       setSignedRaw("");
       setSignedReview(null);
       setTo("");
@@ -1315,6 +1318,7 @@ export default function App() {
           1. 콜드월렛용 거래 만들기
         </button>
         {offlineJson && <div className="offline-box">
+          <div className="offline-qr"><h3>2. 콜드월렛에 QR 보여주기</h3><p>USB가 없어도 콜드월렛의 카메라로 이 QR을 읽을 수 있습니다.</p>{offlineQr && <><img src={offlineQr} alt="서명 전 IEUM 거래 QR"/><a className="button-link" href={offlineQr} download={`ieum-unsigned-${offlineUnsigned?.nonce ?? "transaction"}.png`}>QR 이미지 저장</a></>}</div>
           <label>서명 전 거래 JSON<textarea value={offlineJson} readOnly spellCheck={false} /></label>
           <div className="actions">
             <button type="button" className="secondary" onClick={saveOfflineJson}>JSON 파일로 저장</button>
@@ -1326,6 +1330,7 @@ export default function App() {
               setSignedReview(null);
             }} placeholder="0x로 시작하는 서명된 Raw Transaction을 붙여 넣으세요." spellCheck={false} />
           </label>
+          <label className="button-link">서명 QR 이미지 읽기<input type="file" accept="image/*" hidden onChange={async event => {try{const file=event.currentTarget.files?.[0];if(!file)return;const Detector=(window as unknown as {BarcodeDetector?:new(options?:{formats?:string[]})=>{detect(source:ImageBitmapSource):Promise<Array<{rawValue:string}>>}}).BarcodeDetector;if(!Detector)throw new Error("이 환경에서는 QR 이미지 읽기를 지원하지 않습니다. 서명 문자열을 붙여 넣어 주세요.");const bitmap=await createImageBitmap(file),items=await new Detector({formats:["qr_code"]}).detect(bitmap);bitmap.close();const raw=items[0]?.rawValue.replace(/^ieum-signed-v1:/,"");if(!raw)throw new Error("서명 QR을 찾지 못했습니다.");setSignedRaw(raw);setSignedReview(null);setMessage("서명 QR을 읽었습니다. 아래에서 거래 일치를 확인하세요.");}catch(error){setMessage(String(error));}}}/></label>
           <button type="button" className="secondary" onClick={inspectOfflineSignature} disabled={!signedRaw || busy}>
             3. 서명 결과 확인
           </button>
