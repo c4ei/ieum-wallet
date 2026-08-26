@@ -1,4 +1,4 @@
-# IEUM Wallet v1.0.1.1
+# IEUM Wallet v1.0.2.0
 
 https://github.com/c4ei/ieum-wallet
 
