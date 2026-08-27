@@ -3,6 +3,7 @@
 interface ImportMetaEnv {
   readonly VITE_WALLET_EDITION?: "light" | "normal";
   readonly VITE_DEFAULT_RPC_URL?: string;
+  readonly VITE_MANAGER_URL?: string;
 }
 
 interface ImportMeta {
