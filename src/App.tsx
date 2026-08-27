@@ -83,6 +83,7 @@ import {
   type TransferHistoryItem
 } from "./transferHistory";
 import { waitForTransactionConfirmation } from "./transactionConfirmation";
+import { directionLabel, normalizeAddressHistory, type AddressHistoryItem } from "./addressHistory";
 import { getLanguage, installI18n, setLanguage, type Language } from "./i18n";
 import {
   assertSignedTransactionMatches,
@@ -134,6 +135,7 @@ export default function App() {
   const [hasVault, setHasVault] = useState(false);
   const [password, setPassword] = useState("");
   const defaultRpcUrl = import.meta.env.VITE_DEFAULT_RPC_URL || "https://irpc.aah.name";
+  const managerUrl = import.meta.env.VITE_MANAGER_URL || "https://iem.aah.name";
   const walletEdition = import.meta.env.VITE_WALLET_EDITION || "light";
   const [communicationEnabled, setCommunicationEnabled] = useState(
     localStorage.getItem("ieum-communication-enabled") === "true"
@@ -150,6 +152,9 @@ export default function App() {
   const [txHash, setTxHash] = useState("");
   const [transferHistory, setTransferHistory] = useState<TransferHistoryItem[]>([]);
   const [transferPageNumber, setTransferPageNumber] = useState(1);
+  const [addressHistory, setAddressHistory] = useState<AddressHistoryItem[]>([]);
+  const [addressHistoryError, setAddressHistoryError] = useState("");
+  const [addressHistoryPage, setAddressHistoryPage] = useState(1);
   const [showNetworkSettings, setShowNetworkSettings] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -617,6 +622,17 @@ export default function App() {
         }
       );
       setTransferHistory(storeTransferHistory(vault.address, reconciledHistory));
+      try {
+        const history = await invoke<{ transactions?: Array<Record<string, unknown>> }>("manager_address_history", {
+          managerUrl,
+          address: vault.address,
+          limit: 100
+        });
+        setAddressHistory(normalizeAddressHistory(vault.address, Array.isArray(history.transactions) ? history.transactions : []));
+        setAddressHistoryError("");
+      } catch (error) {
+        setAddressHistoryError(`온체인 거래내역을 불러오지 못했습니다: ${String(error)}`);
+      }
       setNetworkStatus({
         nodeVersion: protocol.nodeVersion,
         protocolVersion: identity.protocolVersion,
@@ -1347,7 +1363,26 @@ export default function App() {
         </div>}
       </section>
       <section className="card">
-        <h2>최근 전송</h2>
+        <h2>최근 온체인 거래</h2>
+        <p className="muted">IEUM Manager에 확정된 보낸 거래와 받은 거래를 함께 표시합니다.</p>
+        {addressHistory.length > 0 ? <>
+          <ul className="transfer-list chain-history">
+            {transferPage(addressHistory, addressHistoryPage).map((item) => <li key={item.hash}>
+              <div className="chain-history-heading"><strong className={`direction ${item.direction}`}>{directionLabel(item.direction)}</strong><b>{formatEther(BigInt(item.value))} IEUM</b></div>
+              <span>{item.direction === "received" ? `보낸 주소 ${item.sender}` : `받는 주소 ${item.recipient}`}</span>
+              <code>{item.hash}</code><small>블록 {item.blockHeight} · {new Date(item.timestamp * 1000).toLocaleString()}</small>
+            </li>)}
+          </ul>
+          <div className="pagination">
+            <button className="secondary" disabled={addressHistoryPage <= 1} onClick={() => setAddressHistoryPage(page => page - 1)}>이전</button>
+            <span>{addressHistoryPage} / {pageCount(addressHistory.length)}</span>
+            <button className="secondary" disabled={addressHistoryPage >= pageCount(addressHistory.length)} onClick={() => setAddressHistoryPage(page => page + 1)}>다음</button>
+          </div>
+        </> : <p className="muted">확정된 온체인 거래가 없습니다.</p>}
+        {addressHistoryError && <p className="warning">{addressHistoryError} 잔액 조회와 송금 기능에는 영향이 없습니다.</p>}
+      </section>
+      <section className="card">
+        <h2>이 기기에서 보낸 거래</h2>
         {transferHistory.length > 0 ? <>
           <ul className="transfer-list">
             {transferPage(transferHistory, transferPageNumber).map((item) => <li key={item.hash}>
