@@ -271,6 +271,15 @@ fn load_vault(app: AppHandle) -> Result<String, String> {
     fs::read_to_string(vault_path(&app)?).map_err(|error| format!("지갑 읽기 실패: {error}"))
 }
 
+#[tauri::command]
+fn delete_vault(app: AppHandle) -> Result<(), String> {
+    let path = vault_path(&app)?;
+    if path.exists() {
+        fs::remove_file(path).map_err(|error| format!("지갑 초기화 실패: {error}"))?;
+    }
+    Ok(())
+}
+
 fn validate_rpc_url(value: &str) -> Result<Url, String> {
     let parsed = Url::parse(value).map_err(|_| "RPC 주소 형식이 올바르지 않습니다.")?;
     if !matches!(parsed.scheme(), "http" | "https") {
@@ -591,6 +600,7 @@ pub fn run() {
             vault_exists,
             save_vault,
             load_vault,
+            delete_vault,
             rpc_call,
             manager_address_history,
             cex_call,

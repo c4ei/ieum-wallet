@@ -10,9 +10,12 @@ import {
   EXPECTED_GENESIS_HASH,
   REQUIRED_PROTOCOL_VERSION,
   createWallet,
+  createSeedChallenge,
   formatAah,
   restoreFromMnemonic,
   restoreFromPrivateKey,
+  unlockDelayMs,
+  verifySeedChallenge,
   validateTransfer
 } from "./wallet";
 import { parseHexQuantity, rpcCall } from "./rpc";
@@ -135,6 +138,7 @@ export default function App() {
   const [vault, setVault] = useState<VaultPayload | null>(null);
   const [hasVault, setHasVault] = useState(false);
   const [password, setPassword] = useState("");
+  const [importPassword, setImportPassword] = useState("");
   const defaultRpcUrl = import.meta.env.VITE_DEFAULT_RPC_URL || "https://irpc.aah.name";
   const managerUrl = import.meta.env.VITE_MANAGER_URL || "https://iem.aah.name";
   const walletEdition = import.meta.env.VITE_WALLET_EDITION || "light";
@@ -148,6 +152,8 @@ export default function App() {
   const [seed, setSeed] = useState("");
   const [privateKey, setPrivateKey] = useState("");
   const [backupConfirmed, setBackupConfirmed] = useState(false);
+  const [backupChallenge, setBackupChallenge] = useState<number[]>([]);
+  const [backupAnswers, setBackupAnswers] = useState(["", "", ""]);
   const [to, setTo] = useState("");
   const [amount, setAmount] = useState("");
   const [txHash, setTxHash] = useState("");
@@ -209,6 +215,11 @@ export default function App() {
   const [autoLockMinutes, setAutoLockMinutes] = useState(
     Number(localStorage.getItem("ieum-auto-lock-minutes") ?? "5")
   );
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [resetAddress, setResetAddress] = useState("");
+  const unlockFailuresRef = useRef(0);
+  const unlockBlockedUntilRef = useRef(0);
   const [auditEntries, setAuditEntries] = useState<CallAuditEvent[]>([]);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -515,6 +526,9 @@ export default function App() {
 
   async function saveWallet(created: { privateKey: string; address: string }, mnemonic: string) {
     if (!backupConfirmed && mnemonic) throw new Error("SEED 백업 확인에 체크해 주세요.");
+    if (mnemonic && !verifySeedChallenge(mnemonic.trim().split(/\s+/), backupChallenge, backupAnswers)) {
+      throw new Error("SEED 확인 단어가 일치하지 않습니다. 기록한 단어를 다시 확인해 주세요.");
+    }
     const payload: VaultPayload = {
       privateKey: created.privateKey,
       address: created.address,
@@ -527,6 +541,9 @@ export default function App() {
     setHasVault(true);
     setPrivateKey("");
     setSeed("");
+    setBackupChallenge([]);
+    setBackupAnswers(["", "", ""]);
+    setBackupConfirmed(false);
     setMessage("지갑을 암호화하여 저장했습니다.");
     setScreen("home");
   }
@@ -537,6 +554,8 @@ export default function App() {
       const created = createWallet();
       setSeed(created.mnemonic);
       setPrivateKey(created.privateKey);
+      setBackupChallenge(createSeedChallenge(created.mnemonic.split(" ")));
+      setBackupAnswers(["", "", ""]);
     } catch (error) {
       setMessage(String(error));
     }
@@ -549,6 +568,10 @@ export default function App() {
       const restored = seed.trim()
         ? restoreFromMnemonic(seed)
         : restoreFromPrivateKey(privateKey);
+      if (seed.trim() && backupChallenge.length === 0) {
+        setBackupChallenge(createSeedChallenge(seed.trim().toLowerCase().split(/\s+/)));
+        throw new Error("SEED 백업 확인 단어를 입력한 뒤 다시 복원해 주세요.");
+      }
       await saveWallet(restored, seed.trim());
     } catch (error) {
       setMessage(String(error));
@@ -559,11 +582,86 @@ export default function App() {
 
   async function unlock(event: FormEvent) {
     event.preventDefault();
+    const remaining = unlockBlockedUntilRef.current - Date.now();
+    if (remaining > 0) {
+      setMessage(`잠금 해제 실패가 반복되었습니다. ${Math.ceil(remaining / 1000)}초 후 다시 시도해 주세요.`);
+      return;
+    }
     try {
       const raw = await invoke<string>("load_vault");
       setVault(await decryptVault(raw, password));
+      unlockFailuresRef.current = 0;
+      unlockBlockedUntilRef.current = 0;
       setPassword("");
       setMessage("지갑 잠금을 해제했습니다.");
+    } catch (error) {
+      unlockFailuresRef.current += 1;
+      const delay = unlockDelayMs(unlockFailuresRef.current);
+      unlockBlockedUntilRef.current = Date.now() + delay;
+      setMessage(`${String(error)} ${delay / 1000}초 후 다시 시도할 수 있습니다.`);
+    }
+  }
+
+  async function exportEncryptedVault() {
+    const raw = await invoke<string>("load_vault");
+    const blob = new Blob([raw], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    const fileName = `IEUM-${vault?.address.slice(0, 10) ?? "wallet"}.aahvault`;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+    setMessage(`${fileName} 파일을 저장했습니다. 보통 PC의 ‘다운로드’ 폴더에 있습니다. 브라우저 다운로드 목록에서도 위치를 열 수 있습니다.`);
+  }
+
+  async function importEncryptedVault(file: File) {
+    try {
+      if (!importPassword) throw new Error("가져올 금고의 비밀번호를 먼저 입력해 주세요.");
+      const raw = await file.text();
+      if (raw.length > 128 * 1024) throw new Error("금고 파일 크기가 비정상적으로 큽니다.");
+      const imported = await decryptVault(raw, importPassword);
+      if (hasVault && !window.confirm(`현재 지갑을 ${imported.address} 지갑으로 교체할까요? 기존 지갑 백업을 먼저 확인하세요.`)) return;
+      await invoke("save_vault", { contents: raw });
+      setVault(imported);
+      setHasVault(true);
+      setImportPassword("");
+      setMessage("암호화 금고의 비밀번호와 주소를 확인하고 가져왔습니다.");
+    } catch (error) {
+      setMessage(String(error));
+    }
+  }
+
+  async function changeWalletPassword(event: FormEvent) {
+    event.preventDefault();
+    if (!vault) return;
+    try {
+      const raw = await invoke<string>("load_vault");
+      const verified = await decryptVault(raw, currentPassword);
+      if (verified.address.toLowerCase() !== vault.address.toLowerCase()) throw new Error("현재 지갑 확인에 실패했습니다.");
+      const encrypted = await encryptVault(vault, newPassword);
+      await invoke("save_vault", { contents: encrypted });
+      setCurrentPassword("");
+      setNewPassword("");
+      setMessage("지갑 비밀번호를 변경했습니다. 기존에 내보낸 금고 파일의 비밀번호는 바뀌지 않습니다.");
+    } catch (error) {
+      setMessage(String(error));
+    }
+  }
+
+  async function resetWallet() {
+    if (!vault) return;
+    try {
+      if (resetAddress.trim().toLowerCase() !== vault.address.toLowerCase()) throw new Error("현재 지갑 주소가 일치하지 않습니다.");
+      const raw = await invoke<string>("load_vault");
+      await decryptVault(raw, currentPassword);
+      if (!window.confirm("이 기기의 지갑 금고를 삭제합니다. SEED·개인키 또는 내보낸 금고 파일이 없으면 복구할 수 없습니다. 계속할까요?")) return;
+      await invoke("delete_vault");
+      setCurrentPassword("");
+      setResetAddress("");
+      setHasVault(false);
+      lock();
+      setMessage("이 기기의 지갑 금고를 초기화했습니다. 온체인 자산은 삭제되지 않습니다.");
     } catch (error) {
       setMessage(String(error));
     }
@@ -1243,12 +1341,18 @@ export default function App() {
             <h2>SEED를 반드시 적어 두세요</h2>
             <p className="warning">아래 12단어를 잃으면 지갑을 복구할 수 없습니다. 누구에게도 보여주지 마세요.</p>
             <div className="seed-grid">{seed.split(" ").map((word, i) => <span key={i}><b>{i + 1}</b>{word}</span>)}</div>
+            <h3>백업한 단어를 다시 확인해 주세요</h3>
+            <div className="backup-challenge">{backupChallenge.map((index, position) =>
+              <label key={index}>{index + 1}번째 단어<input value={backupAnswers[position]}
+                autoComplete="off" spellCheck={false}
+                onChange={event => setBackupAnswers(current => current.map((value, item) => item === position ? event.target.value : value))} /></label>
+            )}</div>
             <label className="check"><input type="checkbox" checked={backupConfirmed}
               onChange={(e) => setBackupConfirmed(e.target.checked)} /> 오프라인에 안전하게 백업했습니다.</label>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
               placeholder="암호화 비밀번호(8자 이상)" />
             <button onClick={() => saveWallet(new Wallet(privateKey), seed).catch((e) => setMessage(String(e)))}
-              disabled={!seed || !backupConfirmed}>지갑 저장</button>
+              disabled={!seed || !backupConfirmed || !verifySeedChallenge(seed.split(" "), backupChallenge, backupAnswers)}>지갑 저장</button>
           </section>
         )}
         {screen === "restore" && (
@@ -1265,10 +1369,25 @@ export default function App() {
                 placeholder="새 지갑 비밀번호(8자 이상)" required />
               {seed && <label className="check"><input type="checkbox" checked={backupConfirmed}
                 onChange={(e) => setBackupConfirmed(e.target.checked)} /> SEED 백업 책임을 확인했습니다.</label>}
+              {seed && backupChallenge.length > 0 && <div className="backup-challenge">{backupChallenge.map((index, position) =>
+                <label key={index}>{index + 1}번째 단어<input value={backupAnswers[position]}
+                  autoComplete="off" spellCheck={false}
+                  onChange={event => setBackupAnswers(current => current.map((value, item) => item === position ? event.target.value : value))} /></label>
+              )}</div>}
               <button disabled={busy || (!seed && !privateKey)}>복원하고 저장</button>
             </form>
           </section>
         )}
+        {screen === "home" && <details className="card compact-card vault-import">
+          <summary><b>다른 PC의 암호화 금고 가져오기</b><span>기기 변경·복구할 때만 사용</span></summary>
+          <div className="stack import-body">
+            <p className="muted">내보낼 때 사용하던 금고 비밀번호로 파일과 지갑 주소를 검증합니다. 위의 ‘지갑 열기’ 비밀번호와는 별도 입력입니다.</p>
+            <input type="password" value={importPassword} onChange={event => setImportPassword(event.target.value)}
+              placeholder="가져올 금고 파일의 비밀번호" autoComplete="off" />
+            <label className="button-link">.aahvault 파일 선택<input type="file" accept=".aahvault,application/json" hidden
+              onChange={event => { const file = event.currentTarget.files?.[0]; if (file) void importEncryptedVault(file); event.currentTarget.value = ""; }} /></label>
+          </div>
+        </details>}
         <VersionStatus status={updateStatus} busy={updateBusy} onCheck={() => void checkUpdate()} onInstall={() => void installUpdate()} />
         {message && <div className="toast">{message}</div>}
       </main>
@@ -1323,6 +1442,10 @@ export default function App() {
               </div>
             </div>}
           </>}
+          <hr />
+          <button type="button" onClick={() => void exportEncryptedVault()}>암호화 금고 파일 내보내기</button>
+          <p className="muted">파일은 보통 PC의 <b>다운로드</b> 폴더에 저장됩니다. Windows는 파일 탐색기 → 다운로드, macOS는 Finder → 다운로드, Linux는 파일 관리자 → 다운로드에서 확인하세요. 브라우저 다운로드 목록의 ‘폴더에서 보기’로도 찾을 수 있습니다.</p>
+          <p className="muted">파일은 AES-256-GCM 암호문이며 가져올 때 현재 금고 비밀번호가 필요합니다. 파일과 비밀번호는 서로 다른 장소에 보관하세요.</p>
         </div>
       </details>
       <div className="columns">
@@ -1758,6 +1881,25 @@ export default function App() {
             </select>
           </label>
           <p className="muted">앱이 백그라운드로 이동하면 선택한 시간과 관계없이 즉시 잠깁니다. 친구·그룹 주소록은 지갑 키로 암호화해 이 기기에 저장합니다.</p>
+          <hr />
+          <h2>지갑 비밀번호 변경</h2>
+          <form className="stack" onSubmit={changeWalletPassword}>
+            <input type="password" value={currentPassword} onChange={event => setCurrentPassword(event.target.value)}
+              placeholder="현재 비밀번호" autoComplete="current-password" required />
+            <input type="password" value={newPassword} onChange={event => setNewPassword(event.target.value)}
+              placeholder="새 비밀번호(8자 이상)" autoComplete="new-password" minLength={8} required />
+            <button>비밀번호 변경</button>
+          </form>
+          <hr />
+          <details className="danger-zone"><summary>이 기기의 지갑 초기화</summary>
+            <p className="warning">온체인 자산은 사라지지 않지만 백업이 없으면 다시 접근할 수 없습니다.</p>
+            <input type="password" value={currentPassword} onChange={event => setCurrentPassword(event.target.value)}
+              placeholder="현재 비밀번호" autoComplete="current-password" />
+            <input value={resetAddress} onChange={event => setResetAddress(event.target.value)}
+              placeholder="확인을 위해 현재 0x 지갑 주소 전체 입력" spellCheck={false} />
+            <button type="button" className="danger" onClick={() => void resetWallet()}
+              disabled={!currentPassword || resetAddress.trim().toLowerCase() !== vault.address.toLowerCase()}>지갑 초기화</button>
+          </details>
           <div className="actions">
             <button type="button" className="secondary" onClick={loadAuditEntries}>통화 감사 기록 보기</button>
             <button type="button" className="danger" onClick={clearAuditEntries}

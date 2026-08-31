@@ -3,20 +3,38 @@ import {
   APP_VERSION,
   CHAIN_ID,
   EXPECTED_GENESIS_HASH,
+  createSeedChallenge,
   formatAah,
   formatIeumUnits,
   restoreFromMnemonic,
   restoreFromPrivateKey,
+  unlockDelayMs,
+  verifySeedChallenge,
   validateTransfer
 } from "./wallet";
 
 describe("IEUM 지갑", () => {
   it("현재 IEUM 운영망 식별자를 고정한다", () => {
     expect(CHAIN_ID).toBe(21004);
-    expect(APP_VERSION).toBe("1.0.2.2");
+    expect(APP_VERSION).toBe("1.0.3.1");
     expect(EXPECTED_GENESIS_HASH).toBe(
       "0x82cfc3615112766f3eb151a8677890c1b74ce6bce8463a1a3590991c383650f6"
     );
+  });
+
+  it("서로 다른 SEED 세 단어를 다시 확인한다", () => {
+    const words = "test test test test test test test test test test test junk".split(" ");
+    const indices = createSeedChallenge(words, new Uint32Array([0, 0, 5, 11]));
+    expect(indices).toEqual([0, 5, 11]);
+    expect(verifySeedChallenge(words, indices, ["test", "test", "junk"])).toBe(true);
+    expect(verifySeedChallenge(words, indices, ["test", "wrong", "junk"])).toBe(false);
+  });
+
+  it("연속 잠금 해제 실패를 최대 30초까지 지연한다", () => {
+    expect(unlockDelayMs(0)).toBe(0);
+    expect(unlockDelayMs(1)).toBe(1_000);
+    expect(unlockDelayMs(4)).toBe(8_000);
+    expect(unlockDelayMs(10)).toBe(30_000);
   });
 
   it("표준 SEED를 같은 주소로 복원한다", () => {

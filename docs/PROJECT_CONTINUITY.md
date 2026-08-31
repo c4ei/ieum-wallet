@@ -54,7 +54,7 @@ IEUM은 한국에서 시작하지만 국가·언어에 묶이지 않는 실사�
 | Chain | `1.0.5-1` | `1.0.5.1`, `v1.0.5.1` | 버전별 GitHub Release |
 | Manager | `1.0.0-12` | `1.0.0.12` | 서버/Docker 배포 |
 | Cold Wallet | `1.0.1-0` | `1.0.1.0`, `v1.0.1.0` | `cold-wallet-latest` |
-| Wallet | `1.0.2-1` | `1.0.2.1`, `v1.0.2.1` | `wallet-light-latest`, `wallet-normal-latest` |
+| Wallet | `1.0.3-1` | `1.0.3.1`, 예정 `v1.0.3.1` | `wallet-light-latest`, `wallet-normal-latest` |
 
 하이픈 버전의 마지막 숫자는 사용자 표시에서 점으로 표현한다. 예: `1.0.2-1` → `1.0.2.1`. 저장소에 별도 `version.json`, Cargo/Tauri 버전이 있으면 모두 같은 릴리스를 가리켜야 한다.
 

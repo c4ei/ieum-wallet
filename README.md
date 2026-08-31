@@ -1,7 +1,8 @@
-# IEUM Wallet v1.0.2.2
+# IEUM Wallet v1.0.3.1
 
 받은 거래를 포함한 온체인 내역과 Manager 연동 사용법은
-[`docs/VERSION_1.0.2.2_WALLET_BACKUP_AND_HISTORY.md`](docs/VERSION_1.0.2.2_WALLET_BACKUP_AND_HISTORY.md)를 참고하세요.
+암호화 금고 파일 백업·SEED 재확인·비밀번호 변경과 안전 초기화는
+[`docs/VERSION_1.0.3.1_VAULT_RECOVERY_AND_PASSWORD.md`](docs/VERSION_1.0.3.1_VAULT_RECOVERY_AND_PASSWORD.md)를 참고하세요.
 
 https://github.com/c4ei/ieum-wallet
 
@@ -15,6 +16,9 @@ https://github.com/c4ei/ieum-wallet
 - SEED 또는 secp256k1 Private Key 복원
 - Ethereum 호환 주소와 `m/44'/60'/0'/0/0` 파생
 - 비밀번호 기반 AES-256-GCM 로컬 암호화 보관
+- 암호화 `.aahvault` 파일 내보내기·비밀번호/주소 검증 가져오기
+- 신규·SEED 복원 시 무작위 3단어 백업 재확인
+- 지갑 비밀번호 변경, 반복 실패 지연, 비밀번호·주소 확인 안전 초기화
 - IEUM 잔액 및 nonce 확인
 - EIP-155 legacy raw transaction 로컬 서명·전송
 - IEUM Cold Wallet용 서명 전 거래 JSON 저장
@@ -66,6 +70,7 @@ cargo run -- --port 7001 --rpc-port 8545
 ## 문서
 
 - [`docs/VERSION_0.0.1.1.md`](docs/VERSION_0.0.1.1.md): 이번 버전 작업·특이점·남은 일
+- [`docs/VERSION_1.0.3.1_VAULT_RECOVERY_AND_PASSWORD.md`](docs/VERSION_1.0.3.1_VAULT_RECOVERY_AND_PASSWORD.md): 금고 파일 백업·SEED 확인·비밀번호와 초기화
 - [`docs/VERSION_0.0.2.1.md`](docs/VERSION_0.0.2.1.md): 4시간 광고 보상과 서버 계약
 - [`docs/VERSION_0.0.3.1.md`](docs/VERSION_0.0.3.1.md): 친구·그룹·초대·그룹 송금
 - [`docs/VERSION_0.0.3.2.md`](docs/VERSION_0.0.3.2.md): 사용자 친화 UI와 IEUM 사이트 창
