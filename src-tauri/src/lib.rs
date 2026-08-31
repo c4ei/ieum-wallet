@@ -20,6 +20,7 @@ use tauri_plugin_updater::UpdaterExt;
 const VAULT_FILE: &str = "wallet.aahvault";
 const CALL_AUDIT_FILE: &str = "call-audit.jsonl";
 const CEX_BASE_URL: &str = "https://cex.aah.name";
+const IEUM_MANAGER_HOST: &str = "iem.aah.name";
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -279,6 +280,56 @@ fn validate_rpc_url(value: &str) -> Result<Url, String> {
         return Err("사용자 정보가 포함된 RPC 주소는 사용할 수 없습니다.".into());
     }
     Ok(parsed)
+}
+
+fn validate_manager_url(value: &str) -> Result<Url, String> {
+    let parsed = Url::parse(value).map_err(|_| "Manager 주소 형식이 올바르지 않습니다.")?;
+    if parsed.scheme() != "https" || parsed.host_str() != Some(IEUM_MANAGER_HOST) {
+        return Err("공식 IEUM Manager HTTPS 주소만 사용할 수 있습니다.".into());
+    }
+    if parsed.username() != "" || parsed.password().is_some() {
+        return Err("사용자 정보가 포함된 Manager 주소는 사용할 수 없습니다.".into());
+    }
+    Ok(parsed)
+}
+
+#[tauri::command]
+async fn manager_address_history(
+    manager_url: String,
+    address: String,
+    limit: u16,
+) -> Result<Value, String> {
+    if !address.starts_with("0x")
+        || address.len() != 42
+        || !address[2..].bytes().all(|byte| byte.is_ascii_hexdigit())
+    {
+        return Err("조회할 IEUM 주소가 올바르지 않습니다.".into());
+    }
+    let mut url = validate_manager_url(&manager_url)?;
+    url.set_path(&format!("/api/explorer/address/{}", address.to_lowercase()));
+    url.query_pairs_mut()
+        .append_pair("limit", &limit.clamp(1, 100).to_string());
+    let response = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|error| format!("Manager 조회 클라이언트 생성 실패: {error}"))?
+        .get(url)
+        .send()
+        .await
+        .map_err(|error| format!("받은 거래 조회 실패: {error}"))?;
+    let status = response.status();
+    let body = response
+        .text()
+        .await
+        .map_err(|error| format!("Manager 응답 읽기 실패: {error}"))?;
+    if !status.is_success() {
+        return Err(format!(
+            "받은 거래 조회 HTTP {}: {}",
+            status.as_u16(),
+            response_preview(&body)
+        ));
+    }
+    serde_json::from_str(&body).map_err(|error| format!("Manager 거래 응답 형식 오류: {error}"))
 }
 
 #[tauri::command]
@@ -541,6 +592,7 @@ pub fn run() {
             save_vault,
             load_vault,
             rpc_call,
+            manager_address_history,
             cex_call,
             write_call_audit,
             read_call_audit,
@@ -573,6 +625,14 @@ mod tests {
         assert!(validate_rpc_url("http://127.0.0.1:8545").is_ok());
         assert!(validate_rpc_url("file:///etc/passwd").is_err());
         assert!(validate_rpc_url("http://user:pass@127.0.0.1:8545").is_err());
+    }
+
+    #[test]
+    fn manager_history_only_allows_the_official_https_host() {
+        assert!(validate_manager_url("https://iem.aah.name").is_ok());
+        assert!(validate_manager_url("http://iem.aah.name").is_err());
+        assert!(validate_manager_url("https://iem.aah.name.evil.example").is_err());
+        assert!(validate_manager_url("file:///etc/passwd").is_err());
     }
 
     #[test]
