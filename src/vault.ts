@@ -4,6 +4,8 @@ export interface VaultPayload {
   privateKey: string;
   address: string;
   createdAt: string;
+  /** 새로 만들거나 SEED로 복원한 지갑만 포함합니다. 기존 금고와 호환됩니다. */
+  mnemonic?: string;
 }
 
 export interface EncryptedVault {

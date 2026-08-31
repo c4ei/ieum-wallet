@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { pageCount, reconcilePendingTransfers, transferPage } from "./transferHistory";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { loadTransferHistory, pageCount, reconcilePendingTransfers, removeTransfer, transferHistoryKey, transferPage } from "./transferHistory";
 
 describe("최근 전송 페이징", () => {
   it("5건 단위로 마지막 페이지까지 나눈다", () => {
@@ -7,6 +7,36 @@ describe("최근 전송 페이징", () => {
     expect(pageCount(items.length)).toBe(3);
     expect(transferPage(items, 2)).toEqual([6, 7, 8, 9, 10]);
     expect(transferPage(items, 99)).toEqual([11, 12]);
+  });
+});
+
+describe("로컬 전송 내역 삭제", () => {
+  const address = "0x0000000000000000000000000000000000000001";
+  const values = new Map<string, string>();
+
+  beforeEach(() => {
+    values.clear();
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key)
+    });
+  });
+
+  it("선택한 완료 내역만 삭제한다", () => {
+    localStorage.setItem(transferHistoryKey(address), JSON.stringify([
+      { hash: "done", to: address, amount: "1", sentAt: new Date().toISOString(), status: "confirmed" },
+      { hash: "failed", to: address, amount: "2", sentAt: new Date().toISOString(), status: "failed" }
+    ]));
+    expect(removeTransfer(address, "done").map(item => item.hash)).toEqual(["failed"]);
+  });
+
+  it("중복 송금 방지를 위해 처리 중 내역은 유지한다", () => {
+    localStorage.setItem(transferHistoryKey(address), JSON.stringify([
+      { hash: "pending", to: address, amount: "1", sentAt: new Date().toISOString(), status: "pending" }
+    ]));
+    expect(() => removeTransfer(address, "pending")).toThrow("삭제할 수 없습니다");
+    expect(loadTransferHistory(address)).toHaveLength(1);
   });
 });
 

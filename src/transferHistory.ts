@@ -55,6 +55,15 @@ export function storeTransferHistory(address: string, items: TransferHistoryItem
   return next;
 }
 
+export function removeTransfer(address: string, hash: string): TransferHistoryItem[] {
+  const current = loadTransferHistory(address);
+  const target = current.find((item) => item.hash === hash);
+  if (target && ["pending", "delayed"].includes(target.status ?? "pending")) {
+    throw new Error("처리 중이거나 확정 지연 중인 거래 내역은 삭제할 수 없습니다.");
+  }
+  return storeTransferHistory(address, current.filter((item) => item.hash !== hash));
+}
+
 export async function reconcilePendingTransfers(
   items: TransferHistoryItem[],
   lookup: (hash: string) => Promise<{ transaction: unknown | null; receipt: { status?: string } | null }>,

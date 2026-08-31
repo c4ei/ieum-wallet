@@ -75,6 +75,7 @@ import {
   loadTransferHistory,
   pageCount,
   reconcilePendingTransfers,
+  removeTransfer,
   saveTransfer,
   storeTransferHistory,
   transferPage,
@@ -156,6 +157,8 @@ export default function App() {
   const [addressHistoryError, setAddressHistoryError] = useState("");
   const [addressHistoryPage, setAddressHistoryPage] = useState(1);
   const [showNetworkSettings, setShowNetworkSettings] = useState(false);
+  const [backupWarningAccepted, setBackupWarningAccepted] = useState(false);
+  const [showBackupSecret, setShowBackupSecret] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<WalletUpdateStatus>({
@@ -515,7 +518,8 @@ export default function App() {
     const payload: VaultPayload = {
       privateKey: created.privateKey,
       address: created.address,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      ...(mnemonic ? { mnemonic } : {})
     };
     const encrypted = await encryptVault(payload, password);
     await invoke("save_vault", { contents: encrypted });
@@ -1290,6 +1294,37 @@ export default function App() {
         <code>{vault.address}</code>
         <div className="balance-actions"><button onClick={refresh} disabled={busy}>잔액 새로고침</button><button className="secondary" onClick={copyAddress}>주소 복사</button>{qr && <img src={qr} alt="내 지갑 주소 QR" />}</div>
       </section>
+      <details className="utility-disclosure wallet-backup" onToggle={event => {
+        if (!event.currentTarget.open) {
+          setShowBackupSecret(false);
+          setBackupWarningAccepted(false);
+        }
+      }}>
+        <summary>
+          <span className="utility-icon backup-icon" aria-hidden="true">◆</span>
+          <span className="utility-title"><strong>지갑 백업</strong><small>SEED·개인키를 안전하게 확인하고 보관해요</small></span>
+          <span className="utility-action">열기</span>
+        </summary>
+        <div className="disclosure-body backup-panel">
+          <p className="warning">이 화면을 촬영하거나 온라인 메모·이메일에 저장하지 마세요. 이 값을 아는 사람은 지갑의 IEUM을 모두 옮길 수 있습니다.</p>
+          <p>{vault.mnemonic ? "이 지갑은 SEED 또는 개인키로 복구할 수 있습니다." : "기존 금고에는 SEED가 저장되지 않아 다시 표시할 수 없습니다. 아래 개인키로 동일하게 복구할 수 있습니다."}</p>
+          <label className="check"><input type="checkbox" checked={backupWarningAccepted} onChange={event => {
+            setBackupWarningAccepted(event.target.checked);
+            if (!event.target.checked) setShowBackupSecret(false);
+          }} /> 주변에 사람이 없고 안전한 오프라인 장소에 기록하겠습니다.</label>
+          {backupWarningAccepted && <>
+            <button type="button" className="secondary" onClick={() => setShowBackupSecret(value => !value)}>{showBackupSecret ? "복구 정보 숨기기" : "복구 정보 보기"}</button>
+            {showBackupSecret && <div className="backup-secret">
+              {vault.mnemonic && <><b>12단어 SEED</b><code>{vault.mnemonic}</code></>}
+              <b>개인키</b><code>{vault.privateKey}</code>
+              <div className="actions">
+                {vault.mnemonic && <button type="button" className="secondary small" onClick={() => void navigator.clipboard.writeText(vault.mnemonic ?? "")}>SEED 복사</button>}
+                <button type="button" className="secondary small" onClick={() => void navigator.clipboard.writeText(vault.privateKey)}>개인키 복사</button>
+              </div>
+            </div>}
+          </>}
+        </div>
+      </details>
       <div className="columns">
         <section className="card">
           <h2>IEUM 보내기</h2>
@@ -1321,9 +1356,13 @@ export default function App() {
           </div>}
         </section>
       </div>
-      <section className="card offline-transfer">
-        <span className="eyebrow">USB 콜드월렛 연결</span>
-        <h2>인터넷 없는 컴퓨터에서 안전하게 서명하기</h2>
+      <details className="utility-disclosure offline-transfer">
+        <summary>
+          <span className="utility-icon cold-icon" aria-hidden="true">❄</span>
+          <span className="utility-title"><strong>USB 콜드월렛</strong><small>인터넷 없는 기기에서 거래를 안전하게 서명해요</small></span>
+          <span className="utility-action">열기</span>
+        </summary>
+        <div className="disclosure-body">
         <p>위의 받는 주소와 수량을 입력한 뒤 아래 순서대로 진행하세요. 개인키나 금고 파일은 이 온라인 지갑으로 가져오지 않습니다.</p>
         <ol className="offline-steps">
           <li><b>거래 파일 만들기</b><span>현재 nonce와 IEUM Mainnet 정보를 자동으로 넣습니다.</span></li>
@@ -1361,7 +1400,8 @@ export default function App() {
             <button type="button" onClick={broadcastOfflineSignature} disabled={busy}>검토한 거래 전송</button>
           </div>}
         </div>}
-      </section>
+        </div>
+      </details>
       <section className="card">
         <h2>최근 온체인 거래</h2>
         <p className="muted">IEUM Manager에 확정된 보낸 거래와 받은 거래를 함께 표시합니다.</p>
@@ -1398,6 +1438,13 @@ export default function App() {
               {(item.status === "pending" || item.status === "delayed") && (
                 <button type="button" className="secondary small" disabled={busy}
                   onClick={() => void refresh()}>거래 상태 다시 확인</button>
+              )}
+              {!["pending", "delayed"].includes(item.status ?? "pending") && (
+                <button type="button" className="text-button danger" onClick={() => {
+                  if (!window.confirm("이 기기의 목록에서만 삭제합니다. 블록체인의 거래 기록은 삭제되지 않습니다. 계속할까요?")) return;
+                  setTransferHistory(removeTransfer(vault.address, item.hash));
+                  setTransferPageNumber(1);
+                }}>목록에서 삭제</button>
               )}
             </li>)}
           </ul>

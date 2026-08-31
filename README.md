@@ -1,7 +1,7 @@
-# IEUM Wallet v1.0.2.1
+# IEUM Wallet v1.0.2.2
 
 받은 거래를 포함한 온체인 내역과 Manager 연동 사용법은
-[`docs/VERSION_1.0.2.1_RECEIVED_HISTORY.md`](docs/VERSION_1.0.2.1_RECEIVED_HISTORY.md)를 참고하세요.
+[`docs/VERSION_1.0.2.2_WALLET_BACKUP_AND_HISTORY.md`](docs/VERSION_1.0.2.2_WALLET_BACKUP_AND_HISTORY.md)를 참고하세요.
 
 https://github.com/c4ei/ieum-wallet
 
