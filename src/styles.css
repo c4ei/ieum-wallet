@@ -185,3 +185,5 @@ code { overflow-wrap:anywhere; color:#c6d9e8; }.balance-card img { width:88px; h
 .app-version button { width:auto; min-height:32px; padding:6px 12px; border-radius:999px; font-size:12px; background:#263e50; color:#d9e8f1; }
 .app-version button.update-ready { background:#27c992; color:#062d22; box-shadow:0 0 0 3px rgba(39,201,146,.14); }
 .app-version small { width:100%; color:#526b7f; }
+.backup-challenge{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:12px 0}.backup-challenge label{font-size:.85rem}.compact-card{margin-top:16px}.danger-zone{border:1px solid #7f1d1d;border-radius:12px;padding:12px}.danger-zone>*+*{margin-top:10px}@media(max-width:640px){.backup-challenge{grid-template-columns:1fr}}
+.vault-import summary{display:grid;gap:4px;cursor:pointer;list-style:none}.vault-import summary::-webkit-details-marker{display:none}.vault-import summary span{color:#7d93a9;font-size:12px}.vault-import .import-body{margin-top:18px}

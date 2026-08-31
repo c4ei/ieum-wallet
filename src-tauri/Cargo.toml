@@ -1,6 +1,6 @@
 [package]
 name = "ieum-wallet"
-version = "1.0.2-2"
+version = "1.0.3-1"
 description = "IEUM Chain desktop and mobile wallet"
 authors = ["IEUM Project"]
 edition = "2021"

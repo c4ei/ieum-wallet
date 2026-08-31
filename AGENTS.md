@@ -4,9 +4,9 @@
 
 ## 현재 기준
 
-- 소스 버전: `package.json`/Tauri의 `1.0.2-1`
-- 표시 버전: `version.json`의 `1.0.2.1`
-- 태그: `v1.0.2.1`
+- 소스 버전: `package.json`/Tauri의 `1.0.3-1`
+- 표시 버전: `version.json`의 `1.0.3.1`
+- 예정 태그: `v1.0.3.1`
 - 안정 Release: `wallet-light-latest`, `wallet-normal-latest`
 - IEUM Mainnet Chain ID `21004`, 공식 genesis hash 확인 필수
 

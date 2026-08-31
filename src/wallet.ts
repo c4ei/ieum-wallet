@@ -7,6 +7,32 @@ export const EXPECTED_GENESIS_HASH = "0x82cfc3615112766f3eb151a8677890c1b74ce6bc
 export const REQUIRED_PROTOCOL_VERSION = 2;
 export const HD_PATH = "m/44'/60'/0'/0/0";
 
+export function createSeedChallenge(words: string[], randomValues?: Uint32Array): number[] {
+  if (words.length !== 12) throw new Error("SEED는 12단어여야 합니다.");
+  const source = randomValues ?? crypto.getRandomValues(new Uint32Array(12));
+  const selected: number[] = [];
+  for (const value of source) {
+    const index = value % words.length;
+    if (!selected.includes(index)) selected.push(index);
+    if (selected.length === 3) return selected.sort((a, b) => a - b);
+  }
+  for (let index = 0; selected.length < 3; index += 1) {
+    if (!selected.includes(index)) selected.push(index);
+  }
+  return selected.sort((a, b) => a - b);
+}
+
+export function verifySeedChallenge(words: string[], indices: number[], answers: string[]): boolean {
+  return indices.length === 3 && answers.length === 3 && indices.every((index, position) =>
+    words[index] === answers[position]?.trim().toLowerCase()
+  );
+}
+
+export function unlockDelayMs(failures: number): number {
+  if (failures <= 0) return 0;
+  return Math.min(30_000, 1_000 * (2 ** Math.min(failures - 1, 5)));
+}
+
 export function createWallet() {
   const wallet = Wallet.createRandom();
   return {
