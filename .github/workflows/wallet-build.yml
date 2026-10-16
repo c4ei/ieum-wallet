@@ -205,7 +205,7 @@ jobs:
         with: { targets: aarch64-linux-android }
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "17" }
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
       - run: sdkmanager "ndk;28.2.13676358"
       - run: npm ci
       - run: node scripts/prepare-edition.mjs light
@@ -237,7 +237,7 @@ jobs:
         with: { targets: aarch64-linux-android }
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "17" }
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
       - run: sdkmanager "ndk;28.2.13676358"
       - run: npm ci
       - run: node scripts/prepare-edition.mjs light
